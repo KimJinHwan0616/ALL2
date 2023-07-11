@@ -1,0 +1,25 @@
+#
+https://www.youtube.com/watch?v=2JmxY4ZSPk4&list=PLJqaIeuL7nuG6EmLPNiHfHi4WWN9C5HNd&index=141
+
+STL(Standard Template Library): C++ 표준라이브러리 템플릿
+
+ㅁ 컨테이너: 객체들을 저장하는 객체 or 클래스
+a. 시퀀스
+vector, list, deque
+
+b. 연관 컨테이너
+set, multiset, map, multimap
+
+c. 연속 메모리 기반(= 배열 기반): 데이터 여러개가 하나의 메모리 단위에 저장
+vector, string, deque
+
+d. 노드 기반: 데이터를 하나의 메모리 단위에 저장
+list, set, multiset, map, multimap
+
+
+ㅁ 반복자(iterator)
+
+ㅁ 알고리즘(algorithm)
+find, sort, search
+
+ㅁ 함수 객체(function object), 함수자(fuctor)

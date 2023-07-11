@@ -1,0 +1,46 @@
+# 셋팅
+[Armstrong 2.5 & 5.0 IPC 셋업 가이드.pdf]
+
+ㅁ 재부팅
+시동 끄고 차문 열어서 닫고 뒤에 암스트롱 밑 구석 아래
+불빛까지 꺼지는거 보고 시동 다시 걸면됨
+
+#####################
+Amstrong → a50
+./docker/scripts/dev_start.sh    # 시작
+./dev_start.sh
+
+./docker/scripts/dev_into.sh    # 진입
+./dev_into.sh
+
+<빌드>
+./apollo.sh build_opt_gpu
+
+<드림뷰>
+./scripts/bootstrap.sh
+
+CPU Dreamview is running at http://localhost:8888    # 웹
+Safety Operator HMI is running at http://localhost:8889
+
+<채널>
+cyber_monitor    # 확인
+
+<레코더>
+cyber_recorder info 레코더_이름   # 정보
+cyber_recorder play -f 레코더_이름 -l    # 시작
+
+#####################
+<파일 구조>
+build, component.cc(msg) <- conf <- dag(conf, readers, ...) <- launch
+
+★ 모듈문제는 빌드파일에서 추가해줘야함
+
+ROS(Robot Operating System): 로봇 소프트웨어 open source '프레임워크'
+ㅁ .launch(XML): 시스템 구성 정의
+
+ㅁ .dag(Directed Acyclic Graph): task(업무) a,b,c,d를 정의하고 실행순서, 의존성 등을 지정하는 것
+    ㅁ component: 모듈 구성 요소(객체)
+
+ㅁ conf(iguration): 설정 파일 폴더
+
+ㅁ .proto(PROTocol buffers): 직렬화(데이터 → 이진 데이터)

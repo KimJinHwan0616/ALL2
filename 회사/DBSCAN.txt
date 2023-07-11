@@ -1,0 +1,21 @@
+DBSCAN(Density-Based Spatial Clustring of Applications with Noise)
+
+eps, min_samples:
+
+metric : string or callable, default=’euclidean’
++ 거리 계산에 사용되는 메트릭 (유사도)를 나타냅니다. 기본값은 유클리드 거리입니다.
+    + callable: 지정 거리 함수(ex: (x-y)**2)
+
+algorithm : {‘auto’, ‘ball_tree’, ‘kd_tree’, ‘brute’}, default=’auto’
++ 클러스터링을 위한 알고리즘을 선택합니다. auto로 설정하면, 자동으로 적절한 알고리즘이 선택됩니다.
+
+leaf_size: default=30
++ BallTree 또는 KDTree 알고리즘에서 사용되는 잎의 크기입니다.
+
+p : float, default=None
++ 거리 메트릭에 대한 Minkowski 파라미터입니다.
+metric='minkowski'인 경우 사용됩니다.
+기본값은 None이며, 이 경우 p=2 (유클리드 거리)입니다.
+
+algorithm : {'auto', 'ball_tree', 'kd_tree', 'brute'}, default='auto'
++ 클러스터링에 사용되는 알고리즘입니다. 'auto'로 설정하면, 자동으로 알고리즘이 선택됩니다.

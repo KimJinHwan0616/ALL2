@@ -1,0 +1,242 @@
+HIVE
+SQL On Hadoop을 기반으로 Hadoop에 저장된 데이터를 쉽게 처리하는 데이터웨어하우스 오픈소스 패키지
+SQL like 스크립트를 이용해서 ETL과 분석을 손쉽게 처리함
+
+-------------------관리자 계정 전환-------------------
+
+su hadoop	# hadoop 계정
+bigdata
+
+cd
+start-dfs.sh	# hadoop 실행
+start-yarn.sh	# hadoop 실행
+
+jps	# 6개 프로세스 확인
+
+su -	# 관리자 계정
+bigdata
+
+rm -rf *.sh
+rm -rf c*
+rm -rf m*
+
+-------------------hive 설치-------------------
+
+cd
+wget   https://dlcdn.apache.org/hive/stable-2/apache-hive-2.3.9-bin.tar.gz --no-check-certificate
+
+tar  zxf   apach [탭키]
+
+mv  apach [탭키]  hive
+
+mv  hive   /usr/share/
+
+ls   /usr/share	# hive 디렉토리 확인
+
+-------------------hive 환경설정-------------------
+
+vi  /etc/profile
+
+Shift + G
+i
+
+## 추가 후 저장
+export HIVE_HOME=/usr/share/hive
+export PATH=$PATH:$HIVE_HOME/bin
+##
+
+esc
+:wq
+
+source /etc/profile
+
+cd $HIVE_HOME
+cp conf/hive-env.sh.template conf/hive-env.sh
+echo "export HADOOP_HOME=/usr/share/hadoop" conf/hive-env.sh
+
+cd conf
+
+cp hive-exec-log4j2.properties.template hive-exec-log4j2.properties
+cp hive-default.xml.template hive-site.xml
+cp beeline-log4j2.properties.template beeline-log4j2.properties
+
+-------------------hive 설정(metastore)-------------------
+###
+metastore
+HDFS에 저장된 text형식의 데이터를 RDBMS의 테이블처럼 다루기 위해
+테이블과 스키마 정보를 생성하고 관리하는 특수한 자료구조
+
+내장 metastore : hive 기본 메타스토어, 성능 낮음 (비추)
+로컬 metastore : 메타스토어를 로컬 DB 서버에 생성 (무난)
+원격 metastore : 메타스토어를 원격 DB 서버에 생성
+###
+
+cd ..
+
+ls  scripts/metastore/upgrade	# derby  mssql  mysql  oracle  postgres 5개 확인
+
+cd   $HIVE_HOME
+
+vi   conf/hive-site.xml
+:set   nu		# 줄번호 표시
+i
+
+## 추가 후 저장
+<!-- Hive Execution Parameters -->
+
+<property>
+<name>system:java.io.tmpdir</name>
+<value>/tmp/hive/java</value>
+</property>
+<property>
+<name>system:user.name</name>
+<value>${user.name}</value>
+</property>
+##
+
+esc
+:wq
+
+-------------------HDFS에 hive 계정을 위한 저장소 생성-------------------
+
+su -	# 관리자 계정
+useradd  -g  hadoop  hive		# hadoop 그룹에 속하는 hive 계정 생성
+
+chown   hive:hadoop  -R   /usr/share/hive	# hive 디렉토리의 소유자를 hive로 변경
+ll  /usr/share/hive		# 소유자 확인
+
+su   hadoop
+
+cd $HADOOP_HOME
+
+# HDFS 저장소 생성
+hadoop  fs  -mkdir  -p   /user/hive/warehouse
+hadoop  fs  -chmod  g+w  /user/hive/warehouse
+hadoop  fs  -chown  -R   hive:hive   /user/hive
+hadoop  fs  -mkdir   /tmp/hive
+hadoop  fs  -chmod  g+w  /tmp/hive
+hadoop  fs  -chmod  777  /tmp/hive
+
+ctrl + d		# 관리자 계정(root)
+
+-------------------hive 실행 및 테스트-------------------
+
+cp  $HADOOP_HOME/share/hadoop/common/lib/gu [탭]  $HIVE_HOME/lib
+chown  hive:hadoop  -R  /usr/share/hive
+
+su   hive
+
+cd  $HIVE_HOME
+
+ls  $HIVE_HOME/lib
+
+rm  $HIVE_HOME/lib/guava-14 [탭]
+
+schematool -initSchema -dbType derby	# apache derby 데이터베이스 형식 metastore 생성
+					# 'schemaTool completed'  메세지 확인
+
+hive  --version	# Hive 2.3.9 확인
+
+hive		# hive CLI 진입 (hive> 확인)
+
+show databases;	# HIVE QL로 기본 데이터베이스 확인(default 확인)
+
+create database  bigdata;
+show databases;	# bigdata 확인
+
+use  bigdata;	# 작업용 데이터베이스 설정 (bigdata)
+
+create external table stocks ( exchanges STRING,
+symbol STRING, ymd STRING, price_open FLOAT, price_high FLOAT, price_low FLOAT,
+price_close FLOAT, volume INT, price_adj_close FLOAT)
+row format delimited fields terminated by ',' location '/user/hive/stock';
+
+CREATE TABLE IF NOT EXISTS zipcode (
+zipcode string, sido String, gugun String, dong String, bunji String, bldg String)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n' STORED AS TEXTFILE;
+
+show tables;	# stocks, zipcode 확인
+
+desc  stocks;  	# 테이블 확인
+desc  zipcode;
+
+exit;	# hive CLI 종료
+
+###
+방금 생성한 데이터베이스와 테이블을 hdfs에서 확인
+hadoop 명령을 실행하는 HDFS 상의 위치는
+/user/hive 임 (왜냐하면 로그인 사용자는 hive임)
+###
+
+hadoop  fs  -ls   .		# stock, warehouse 확인 (= hadoop  fs  -ls  /user/hive)
+hadoop  fs  -ls   warehouse			# bigdata.db 확인
+hadoop  fs  -ls   warehouse/bigdata.db	# zipcode 확인
+
+-------------------hive 원격접속 설정-------------------
+###
+dbeaver  <->  hive	 OR python  <->  hive
+
+내장모드 : beeline명령을 이용해서 Hive CLI 와 유사하게 hive를 수행
+원격모드 : Thrift 통신을 통해 원격지에 있는 hive에 접속 (!!)
+###
+beeline -u jdbc:hive2://	# 내장모드 (0: jdbc:hive2://> 확인)
+
+show databases;	# 출력결과 향상
+use bigdata;
+show tables;
+desc zipcode;
+
+!quit
+
+-------------------hiveserver2 명령을 이용해서 원격모드로 hive 실행-------------------
+###
+단!, hive계정 역시 mapreduce 명령을
+사용할 수 있도록 권한이 부여되어야 함!! (절대 중요!)
+###
+
+ctrl + d		# 관리자 계정(root)
+su hadoop
+cd $HADOOP_HOME
+
+vi etc/hadoop/core-site.xml
+i
+## 추가 후 저장
+<configuration>
+
+<property>
+<name>hadoop.proxyuser.hive.groups</name>
+<value>*</value>
+</property>
+<property>
+<name>hadoop.proxyuser.hive.hosts</name>
+<value>*</value>
+</property>
+
+</configuration>
+
+esc
+:wq
+
+stop-yarn.sh
+stop-dfs.sh
+
+start-dfs.sh
+start-yarn.sh
+
+jps	# 6개 프로세스 실행 확인
+
+ctrl + d
+
+su hive
+
+cd $HIVE_HOME
+
+hive  --service  hiveserver2   &	# 원격접속이 가능하도록 hive를 Thrift 서버로 실행
+엔터
+
+###
+dbeaver 실행 -> 왼쪽 상단 플러그 아이콘 -> Apache Hive
+-> Host : ip 주소 -> Username : hive -> Text Connetion -> 연결 완료
+
+중앙 위 hive 아이콘 오른쪽 default -> bigdata
+###

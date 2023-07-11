@@ -1,0 +1,119 @@
+sqoop( SQL to Hadoop ) : Hadoop <-> RDBMS 데이터를 전송할 수 있도록 설계된 오프소스 소프트웨어
+
+sqoop.apache.org
+
+-------------------관리자 계정-------------------
+
+su -	# 관리자 계정(root)
+bigdata	# 비밀번호
+
+-------------------sqoop 다운로드-------------------
+
+cd
+wget  http://archive.apache.org/dist/sqoop/1.4.7/sqoop-1.4.7.bin__hadoop-2.6.0.tar.gz
+
+-------------------압축해제 및 설치-------------------
+
+tar  zxf  sqo  [탭키]
+mv   sqo  [탭키]   sqoop
+mv   sqoop   /usr/share/
+ls   /usr/share		# sqoop 확인
+
+-------------------환경변수 설정-------------------
+
+vi  /etc/profile
+Shift + G
+i
+
+## 추가 후 저장
+export SQOOP_HOME=/usr/share/sqoop
+export PATH=$PATH:$SQOOP_HOME/bin
+##
+
+esc
+:wq
+
+source /etc/profile
+
+-------------------sqoop 설정 및 실행확인-------------------
+
+cd   $SQOOP_HOME
+
+cp conf/sqoop-env-template.sh conf/sqoop-env.sh
+
+echo "export HADOOP_COMMON_HOME=/usr/share/hadoop" >> conf/sqoop-env.sh
+
+echo "export HADOOP_MAPRED_HOME=/usr/share/hadoop" >> conf/sqoop-env.sh
+
+cat conf/sqoop-env.sh
+
+sqoop version	# 버전 확인 1.4.7
+
+-------------------JDBC 드라이버 설치 - mysql-------------------
+###
+mysql.org
+downloads -> MySQL Community (GPL) Downloads ->
+Connector/J -> Archives -> 5.1.49 -> mysql-connector-java-5.1.49.tar.gz -> download 링크 복사
+###
+
+cd
+wget  https://downloads.mysql.com/archives/get/p/3/file/mysql-connector-java-5.1.49.tar.gz --no-check-certificate
+ls   		# mysql jdbc 드라이버 확인 5.1.49
+
+tar zxf  my [탭키]	# 압축해제
+ls    		# mysql-connector-java-5.1.49 확인
+
+cd   my [탭키]
+ls   		# jar 파일 2개 확인
+
+cp  *bin.jar   $SQOOP_HOME/lib
+ls   $SQOOP_HOME/lib	# mysql-connector ~ .jar 파일 확인
+
+chown   hadoop:hadoop -R  $SQOOP_HOME
+
+wget https://repo1.maven.org/maven2/commons-lang/commons-lang/2.6/commons-lang-2.6.jar --no-check-certificate
+
+cp  com [탭키]  $SQOOP_HOME/lib
+
+chown   hadoop:hadoop -R  $SQOOP_HOME
+
+---------------------------------------------------------
+su hadoop	# 관리자 계정(hadoop)
+
+source  /etc/profile
+cd  $SQOOP_HOME
+
+###
+데이터베이스 확인
+# sqoop list-databases
+# --connect '데이터베이스 서버 호스트'
+# --username 아이디
+# -P : 암호입력을 수동으로 설정
+###
+
+sqoop  list-databases \
+--connect jdbc:mysql://bigdata.c6piwvaa6snp.ap-northeast-2.rds.amazonaws.com:3306/bigdata \
+--username admin -P
+
+# 테이블 목록
+sqoop  list-tables \
+--connect jdbc:mysql://bigdata.c6piwvaa6snp.ap-northeast-2.rds.amazonaws.com:3306/bigdata \
+--username admin -P
+
+-------------------mariaDB 테이블 HDFS 저장-------------------
+
+sqoop  import \
+--connect jdbc:mysql://bigdata.c6piwvaa6snp.ap-northeast-2.rds.amazonaws.com:3306/bigdata \
+--username admin -P \
+--table  테이블  -m  1
+
+hadoop   fs   -ls    .   		# 테이블 확인
+hadoop   fs   -ls    테이블  		# part-m-00000 확인
+hadoop   fs   -cat	 테이블/*		# 테이블 출력
+
+-------------------오라클 테이블 HDFS 저장-------------------
+
+sqoop  import \
+--connect jdbc:oracle:thin:@아이피주소:1521:xe \
+--username bigdata -P \
+--table  테이블  -m  1

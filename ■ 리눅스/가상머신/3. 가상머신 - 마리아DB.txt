@@ -1,0 +1,127 @@
+-------------------MariaDB 설치-------------------
+
+###
+https://mariadb.org/download/
+-> Choose a distribution -> CentOS 7 (x86_64) 선택
+-> Choose a MariaDB Server version -> 10.3 선택
+-> Mirror -> Harukasan - South Korea 선택
+->
+[mariadb]
+name = MariaDB
+baseurl = https://ftp.harukasan.org/mariadb/yum/10.3/centos7-amd64
+gpgkey=https://ftp.harukasan.org/mariadb/yum/RPM-GPG-KEY-MariaDB
+gpgcheck=1
+
+복사
+###
+
+su -  # root 계정
+bigdata
+
+vi /etc/yum.repos.d/MariaDB.repo  # mariadb repo 파일 생성
+i
+
+##
+[mariadb]
+name = MariaDB
+baseurl = https://ftp.harukasan.org/mariadb/yum/10.3/centos7-amd64
+gpgkey=https://ftp.harukasan.org/mariadb/yum/RPM-GPG-KEY-MariaDB
+gpgcheck=1
+##
+
+esc
+:wq
+
+yum install -y MariaDB-server MariaDB-client	# MariaDB 클라이언트/서버 설치
+
+
+-------------------MariaDB 인코딩 설정-------------------
+
+cd /etc/my.cnf.d
+
+vi mysql-clients.cnf
+i
+
+##
+[mysql]
+default-character-set=utf8	# 추가
+
+[mysqldump]
+default-character-set=utf8	# 추가
+
+[client]			# 추가
+default-character-set=utf8	# 추가
+##
+
+esc
+:wq
+
+vi server.cnf
+i
+
+##
+[mysqld]
+
+collation-server = utf8_general_ci
+init-connect='SET NAMES utf8'
+init_connect="SET collation_connection = utf8_general_ci"
+character-set-server = utf8
+##
+
+esc
+:wq
+
+
+systemctl start mariadb	# MariaDB 서버 시작
+systemctl enable mariadb	# MariaDB 자동 실행
+/usr/bin/mysql_secure_installation	# MariaDB 초기 설정
+
+엔터
+y
+비밀번호		# 1234
+비밀번호 확인	# 1234
+y
+y
+y
+y
+
+mysql  -u  root  -p  mysql	# MariaDB 기본 사용자 추가
+비밀번호		# 1234
+
+-------------------MariaDB 환경 설정-------------------
+
+create database bigdata;	# 데이터베이스(bigdata) 생성
+
+##
+계정 추가
+
+create user 사용자@접속위치
+identified by 비밀번호
+##
+
+create user 'bigdata'@'%'
+identified by '1234';
+
+##
+권한 부여
+
+grant 권한 on
+데이터베이스.테이블 to 사용자@접속위치
+##
+
+grant all privileges on
+bigdata.* to 'bigdata'@'%';
+
+flush privileges;
+exit
+
+yum install -y firewalld	# 방화벽 설치
+
+systemctl  stop  firewalld	# 방화벽 중지
+systemctl  disable  firewalld
+
+###
+dbeaver 실행 -> 왼쪽 상단 플러그 아이콘 -> MariaDB
+-> Server Host: ip 주소 -> Database: bigdata -> Username : bigdata -> Password: 1234
+-> Test Connection -> Connected 확인
+###

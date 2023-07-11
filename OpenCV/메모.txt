@@ -1,0 +1,44 @@
+유튜브: https://www.youtube.com/watch?v=61dNYY1_IIE&list=PLRx0vPvlEmdBx9X5xSgcEk4CEbzEiws8C&index=13
+
+책
+OpenCV: https://thebook.io/006939/
+깃허브: https://thebook.io/080299/
+#######################################################
+Localization: 하나의 물체 위치를 사각형 박스로 지정하여 찾음
+Object Detection: 여러 개의 물체 위치를 사각형 박스로 지정하여 찾음
+segmentation: 픽셀 단위 Detection
+
+#######################################################
+임계점 윤곽선(Contour)
+
+contours, hierarchy = cv2.findContours(
+    이미지_변수
+    , mode = 검출_방법
+    , method = 근사화_방법
+    )
+
+- mode
+RETR_EXTERNAL: 외곽 윤곽선, 계층 구조X
+RETR_LIST: 모든 윤곽선, 계층 구조X
+RETR_TREE: 모든 윤곽선, 계층 구조O
+
+- method
+CHAIN_APPROX_NONE: 모든 윤곽점
+CHAIN_APPROX_SIMPLE: 윤곽선 끝점
+
+cv2.drawContours(
+    thresh
+    , contours
+    , contour_index = 인덱스    # -1: 전체 윤곽선
+    , color = (숫자, 숫자, 숫자)    # RGB(0 ~ 255)
+    , thickness = 두께
+    )
+
+#######################################################
+ㅁ 이미지 겹치기
++ cv2.add(이미지_변수1, 이미지_변수2)
++ 이미지_변수1 + 이미지_변수2
+
+ㅁ 이미지 저장 ??
+cv2.imwrite(저장할 이미지 파일 이름, 저장할 이미지 객체)
+

@@ -1,0 +1,19 @@
+Setting -> Advanced Settings Editor
+
+1. Theme
+
+{
+    "overrides": {
+        "code-font-size": "22px",
+        "ui-font-size1": "21px",
+        "content-font-size1": "17px"
+    },
+    "theme": "JupyterLab Dark",
+    "theme-scrollbars": true
+}
+
+2. Jupyter Widgets
+
+{
+    "saveState": true
+}

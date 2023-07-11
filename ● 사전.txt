@@ -1,0 +1,7 @@
+Hz(Hertz): 초 당 진동수
+annotation: 데이터 정보 추가
+
+VPU(Vision Processing Unit): 하드웨어 가속기
+
+FOV(Field of View): 카메라 관찰 가능 영역
+

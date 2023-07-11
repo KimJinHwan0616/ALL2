@@ -1,0 +1,9 @@
+###
+
+파이프라인(Pipeline): 데이터 처리 컴포넌트(component)들이 연속되어 있는 것
+
+성능 지표
+- 회귀
+평균 제곱근 오차(RMSE, root mean square error)
+평균 절대 오차(MAE, mean absolute deviation)
+

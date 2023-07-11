@@ -1,0 +1,114 @@
+-------------------오라클 계정 생성-------------------
+su -  # root 계정
+
+vi  /etc/hosts
+i
+
+##
+#127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+#::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+
+192.168.58.128    bigdata	# bigdata ip
+127.0.0.1    localhost
+##
+
+esc
+:wq
+
+yum  install  -y  bc  flex  libaio  wget  unzip	# 패키지 설치
+yum install -y net-tools			# 패키지 설치
+
+
+groupadd  oinstall		# 그룹 추가
+groupadd  dba
+
+useradd  -g  oinstall  -G  dba  oracle		# 아이디 생성
+passwd  oracle				# 비밀번호 생성
+
+bigdata	# 비밀번호
+
+-------------------오라클 설치파일 업로드-------------------
+
+###
+https://www.oracle.com/kr/index.html -> 리소스 -> 다운로드
+-> DB Express -> Prior Release Archive -> 페이지 없어짐
+-> https://dw.hanbit.co.kr/Oracle/11gXE/ -> oracle-xe-11.2.0-1.0.x86_64.rpm.zip
+
+WinSCP 실행 - /home/bigdata -> oracle-xe-11.2.0-1.0.x86_64.rpm.zip 복사
+###
+
+ls -lh /home/bigdata	# oracle-xe-11.2.0-1.0.x86_64.rpm.zip 확인
+
+-------------------오라클 설치-------------------
+
+cd /home/bigdata
+unzip oracle-xe-11.2.0-1.0.x86_64.rpm.zip
+
+cd Disk1/
+
+rpm -ivh oracle-xe-11.2.0-1.0.x86_64.rpm
+
+/etc/init.d/oracle-xe configure
+
+9999
+엔터
+bigdata	# 비밀번호
+bigdata 	# 비밀번호 확인
+y
+
+-------------------오라클 데이터베이스 설치파일 삭제-------------------
+
+cd /home/bigdata
+ls	# Disk1, oracle-xe-11.2.0-1.0.x86_64.rpm.zip 확인
+
+rm -rf Disk1/
+rm -rf oracle-xe-11.2.0-1.0.x86_64.rpm.zip
+
+ls
+
+-------------------오라클 데이터베이스 환경설정-------------------
+
+. /u01/app/oracle/product/11.2.0/xe/bin/oracle_env.sh
+
+su oracle		# oracle 계정
+
+sqlplus /nolog	# sqlplus 접속
+
+conn sys as sysdba
+bigdata		# 비밀번호
+
+##
+테이블스페이스 생성
+
+create tablespace ts_bigdata
+datafile '/u01/app/oracle/oradata/XE/ts_bigdata.dbf'
+size 100M autoextend on next 50M;
+##
+
+##
+사용자 생성
+
+create user bigdata identified by bigdata2022	# 사용자: bigdata, 비밀번호: bigdata2022
+default tablespace ts_bigdata
+temporary tablespace TEMP;
+##
+
+grant connect, resource to bigdata;	# 권한설정
+
+alter user hr identified by hr account unlock;	# hr 계정 해제
+
+@?/rdbms/admin/utlsampl.sql	# 예제 데이터베이스 생성
+
+lsnrctl status	# oracle 리스너 실행 확인
+
+
+yum install -y firewalld	# 방화벽 설치
+
+systemctl  stop  firewalld	# 방화벽 중지
+systemctl  disable  firewalld
+
+###
+dbeaver 실행 -> 왼쪽 상단 플러그 아이콘 -> Oracle
+-> Server Host: ip 주소 -> Database: xe -> Username : bigdata -> Password: bigdata2022
+-> Test Connection -> Connected 확인
+###

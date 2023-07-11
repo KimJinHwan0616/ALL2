@@ -1,0 +1,23 @@
+MATCH (n1:vector), (n2:vector)
+WHERE id(n1) < id(n2) AND NOT (n1)-[:edge]-(n2) AND NOT (n1)-[:edge]-(n2)
+// WHERE NOT (n1)-[:edge]-(n2)
+
+CREATE (n1)-[e:edge]->(n2)
+
+// O
+// SET e.inner_product = reduce(sum = 0, i in range(0, size(n1.data)-1) | sum + n1.data[i]*n2.data[i])
+// SET e.inner_product = reduce(sum = 0.0, i in range(0, size(n1.data)-1) | sum + toFloat(n1.data[i]*n2.data[i]))
+
+// reduce(sum = 0.0, i in range(0, size(n1.data)-1) | sum + toFloat(n1.data[i])*toFloat(n2.data[i]))
+// sqrt(reduce(sum = 0.0, i in range(0, size(n1.data)-1) | sum + toFloat(n1.data[i]^2)))
+// sqrt(reduce(sum = 0.0, i in range(0, size(n2.data)-1) | sum + toFloat(n2.data[i]^2)))
+SET e.cosine_similarity = reduce(sum = 0.0, i in range(0, size(n1.data)-1) | sum + toFloat(n1.data[i])*toFloat(n2.data[i])) / (sqrt(reduce(sum = 0.0, i in range(0, size(n1.data)-1) | sum + toFloat(n1.data[i]^2))) * sqrt(reduce(sum = 0.0, i in range(0, size(n2.data)-1) | sum + toFloat(n2.data[i]^2))))
+
+
+
+
+
+
+
+
+

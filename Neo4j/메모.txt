@@ -1,0 +1,15 @@
+
+collect: 리스트화
+
+(a:라벨1|라벨2) : 라벨1과 라벨2 모두?
+(a:유형1|유형2) : 라벨1과 라벨2 모두?
+
+<csv 로드> ##########################################
+
+LOAD CSV WITH HEADERS FROM
+'http://localhost:11001/project-36b2a657-d3ed-4b26-9a50-b71c3b42cf1a/vector.csv'
+AS l
+
+CREATE (:Vector {data: l.data})
+
+

@@ -1,0 +1,26 @@
+Computer Vision:
+- 객체 검출(Object Detection): 객체 존재 유무
+특징 추출 -> 특징 검출
+
+- 객체 인식(Object Recognition): 객체 구분
+- 객체 추적(Object Tracking)
+
+
+<Feature>
+
+- Feature detection and description: keypoint & descriptor 추출
+
+	keypoint: 고유한 영역(모서리, 좌표, ...)
+	descriptor: keypoint에서 주변 지역적 특징을 뽑아낸 정보
+
+- Descriptor Matchers: 두 이미지의 descriptor의 유사도를 비교하여 매칭
+
+	계산방법: Brute-force, Flann(Fast Library for Approximate Nearest Neighbors)
+
+- Drawing functions: matching된 결과를 이미지에 표현하는 함수
+	- Keypoint
+	- 두 이미지 Matching 결과
+
+- Object categoriztation: 이미지 분류 알고리즘
+
+	description 정보 -> 모델 훈련 -> 이미지 분류

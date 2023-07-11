@@ -1,0 +1,27 @@
+ㅁ 원격 저장소 업데이트
+git remote update
+
+ㅁ 로컬 저장소 브랜치 - 생성
+git checkout -b '#459-camera-obstacle-detection-component'
+
+ㅁ 원격 저장소 브랜치 - 불러오기
+git checkout -b '#459-camera-obstacle-detection-component' origin/#459-camera-obstacle-detection-component
+
+ㅁ 도커 안에서 빌드
+./apollo.sh build_opt_gpu
+
+ㅁ 사이버 레코드 돌리기
+cyber_recorder play -f 레코드이름* -l
+cyber_recorder play -f 20230705110955.record.0000* -l
+
+ㅁ 채널 확인
+cyber_monitor
+
+ㅁ 소스 코드 파일 실행
+cyber_launch start modules/perception/production/launch/perception_swm_lidar2camera_fusion.launch
+
+ㅁ 소스 코드 파일
+swm_lidar2camera_fusion_component.cc
+swm_lidar2camera_fusion_component.h
+
+#############################

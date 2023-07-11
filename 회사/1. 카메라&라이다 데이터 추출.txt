@@ -1,0 +1,43 @@
+Orin: 카메라   CPU: 라이다
+비밀번호: swm.ai ??
+#######################################
+0. Orin 모니터 연결(DP 선)
+
+1. Orin, CPU 브랜치 각각 생성 및 이동 → git checkout 브랜치
+-> 도커 외부에서 브랜치 생성
+
+2. Orin, CPU 터미널 도커 진입
+
+3. 파일 수정 후 빌드(Orin + CPU)
+① CPU
+at128_rsbp_conf.pb.txt → input_channel 주석 해제
+
+② Orin + CPU
+./apollo.sh build_opt_gpu
+
+4. 라이다
+① 폴더 생성
+apollo/data/bag → mkdir 폴더
+② 기록 시작
+apollo/data/bag/폴더 → cyber_recorder record -a → 일정 시간 지간 후 종료
+
+5. 카메라
+① 프로그램 실행
+② Pictures/Webcam/폴더 생성
+
+6. 브랜치 main으로 돌려놓기
+git checkout main
+
+# 오류 뜰 시
+git checkout 오류파일경로
+
+7. 데이터 추출
+① 카메라
+CPU 터미널 → Armstrong/a50/data
+→ scp -r armstrong@192.168.20.124:/home/armstrong/Pictures/Webcam .
+
+② 라이다
+외장 하드 복사
+
+
+

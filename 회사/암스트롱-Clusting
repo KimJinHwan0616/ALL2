@@ -1,0 +1,15 @@
+module - perception
+
+실행: production - launch - perception_lidar_sublidar.launch
+확인: production - dag - dag_streaming_perception_lidar_sublidar
+
+
+
+작업: lidar - lib - signal_processing / clustering - clustering.cc
+"std::cout << "Point Cloud Clustering, Output objects" << std::endl;" 아래
+
+
+참고1: lidar - lib - detector - mask_pillars_detection - mask_pillars_detection.cc
+"GetObjects" 부분 한번보기
+
+참고2: lidar - lib - detector - point_pillars_detection - point_pillars_detection.cc

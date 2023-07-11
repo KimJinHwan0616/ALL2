@@ -1,0 +1,7 @@
+####################################
+    평가(Object detection)
+https://herbwood.tistory.com/2
+파이토치 코드 확인
+
+ㅁ mAP(mean Average Precision, 정확도+재현율)
+

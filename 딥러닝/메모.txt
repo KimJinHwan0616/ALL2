@@ -1,0 +1,29 @@
+
+https://www.youtube.com/watch?v=O78V3kwBRBk&t=895s
+
+
+##############################################
+<객체 검출>
+1. 경계 상자 정밀도(Bounding box precision) : 정확한 경계 상자 (너무 크지도, 너무 작지도 않은)를 제공하는가?
+2. 재현율(recall) : 모든 객체를 찾았는가?
+3. 클래스 정밀도(Class precision) : 객체마다 정확한 클래스를 출력했는가?
+
+4. 수행시간(inference time): FPS
+
+##############################################
+ㅁ 더 북
+https://thebook.io/080289/
+
+ㅁ 위키독스
+- 정의 위주
+https://wikidocs.net/60680
+
+- 객체 탐지 위주
+https://wikidocs.net/148633
+##################
+
+분류
+이미지 분할(Image segmentation): 픽셀 분류
+- Semantic Segmentation: 픽셀이 어떤 클래스인지 구분
+- Instance Segmentation: Semantic Segmentation + 서로 다른 객체 구분
+

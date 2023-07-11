@@ -1,0 +1,113 @@
+--------------miniconda (py38) 설치--------------
+##
+conda.io -> miniconda -> Linux installers -> Python 3.8 - Miniconda3 Linux 64-bit 복사
+##
+
+su -	# root 계정
+wget https://repo.anaconda.com/miniconda/Miniconda3-py38_4.12.0-Linux-x86_64.sh
+
+##
+conda.io -> miniconda -> Installing -> Installation instructions
+## -> Regular installation -> Linux
+
+bash  Miniconda3-py38_4.12.0-Linux-x86_64.sh -b -p /opt/miniconda3
+
+vi /etc/profile	# 환경변수 설정파일 수정
+shift + G
+i
+
+## conda 설치위치, path 지정
+export CONDA_HOME="/opt/miniconda3"
+export PATH=${CONDA_HOME}/bin:$PATH
+##
+
+esc
+:wq
+
+source /etc/profile		# 변경한 시스템 환경변수를 시스템에 반영
+
+conda update conda	# 미니콘다 업데이트
+엔터
+
+python --version    # Python 3.8.13 확인
+
+--------------miniconda 가상환경 생성--------------
+
+su bigdata	# bigdata계정
+source  /etc/profile
+python --version		# 3.8.13 확인
+
+cd
+python  -m  venv  py38
+source  py38/bin/activate
+
+----------------jupyter lab 설치 및 주소 설정--------------
+
+su -	# root 계정
+
+chgrp -R bigdata /opt/miniconda3/   # 소유그룹 및 권한 변경
+chmod -R 770 /opt/miniconda3/   # 소유그룹 및 권한 변경
+ll  /opt/miniconda3/
+
+logout  # root 계정 로그아웃
+
+source  py38/bin/activate   # 파이썬 가상환경 활성화
+
+conda install -c conda-forge jupyter jupyterlab nbconvert   # jupyter lab 설치
+엔터
+
+jupyter lab  --generate-config	# 환경설정 파일 생성 - 한번만
+vi   .jupyter/jupyter_lab_config.py
+
+/ServerApp.ip   # 검색
+
+##
+#c.ServerApp.ip = localhost
+
+c.ServerApp.ip = '0.0.0.0'	# localhost -> 0.0.0.0 변경
+##
+
+esc
+
+/ServerApp.port   # 검색
+##
+#c.ServerApp.port = 0
+
+c.ServerApp.port = 6304	# 전화번호 뒷자리
+##
+
+esc
+:wq
+
+jupyter lab &	# 실행
+
+###
+브라우저 주소 - ip:6304
+http://127.0.0.1:6304/lab?token=bfadfb0fbab00833ac677494e75ee301b950ce555300f857
+###
+
+ps aux		# 실행중인 주피터 확인 ( COMMAND  /opt/miniconda3 )
+kill -9  PID번호	# 실행중인 주피터 중지 ( PID )
+
+----------------방화벽 설정(집)----------------
+
+yum install -y firewalld	# 방화벽 설치
+systemctl enable firewalld	# 방화벽을 활성화
+systemctl start firewalld	# 재부팅시 방화벽을 자동 시작
+
+firewall-cmd --zone=public --add-port=6304/tcp --permanent	# jupyter lab : 6304 ( 휴대폰 뒷번호 )
+firewall-cmd --reload	# 방화벽 설정을 시스템 반영
+
+----------------★jupyter lab 실행★----------------
+
+su bigdata
+source  py38/bin/activate   # 파이썬 가상환경 활성화
+
+###
+jupyter server list   # 주피터 실행서버 목록 확인
+
+ps aux	# PuTTY 최대화면, 실행중인 주피터 확인 ( COMMAND  /opt/miniconda3 )
+kill -9  PID번호	# 실행중인 주피터 중지 ( PID )
+###
+
+jupyter lab &	# 실행

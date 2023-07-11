@@ -1,0 +1,20 @@
+###############<neo4j>###############
+
+docker run \
+--name neo4j \
+-p 7474:7474 -p 7687:7687 \
+-v $HOME/Desktop/neo4j/data:/data \
+-v $HOME/Desktop/neo4j/logs:/logs \
+-v $HOME/Desktop/neo4j/conf:/conf \
+-d neo4j
+
+docker run \
+--name neo4j \
+-p 7474:7474 -p 7687:7687 \
+-v $HOME/Desktop/neo4j/data:/data \
+-d neo4j_test
+
+아이디: neo4j
+비밀번호: 11111111
+
+

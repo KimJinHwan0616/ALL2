@@ -1,0 +1,44 @@
+★ 자료형 - 개념 분류 따로 만들어서 용어 정리하기 ★
+비파괴적 함수(Non Destructive Function): 원본 변화X
+lower(), upper(), split(), ...
+
+파괴적 함수(Destructive Function): 원본 변화O
+append(), remove(), pop(), ...
+###################
+
+이터레이터 - p.264
+
+enumerate()
+    i, value = enumerate(리스트)
+    key, value = enumerate(사전)
+###################
+<심화>
+재귀 함수(Recursion Function): 함수 내부에서 자신을 다시 호출하는 함수
+예) 피보나치 수열, 팩토리얼,
+
+- 메모화(memorize):
+###################
+
+람다(lambda): 간단한 함수
+lambda 매개변수: 리턴값
+
+
+내장 함수
+- 함수를 매개변수로 사용
+    map(함수, 리스트) --> 조건
+
+    filter(함수, 리스트) --> 불
+
+파일
+- 열기
+with open(파일 경로, 파일 모드) as 파일 객체:
+    실행문
+
+- 읽기
+파일 객체.read()
+
+-- 한줄 씩 읽기
+for 변수 in 파일 객체:
+    실행문
+
+제너레이터(generator): 이러테이터를 직접 만들 때 사용하는 코드

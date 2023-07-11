@@ -1,0 +1,28 @@
+1. TensorRT 다운
+https://developer.nvidia.com/nvidia-tensorrt-8x-download
+
+2. 도커 경로에 폴더를 옮긴 후, 주피터랩 터미널 실행
+bash
+
+cd /workspace/
+pip install TensorRT-8.5.2.2/python/tensorrt-8.5.2.2-cp38-none-linux_x86_64.whl
+pip install TensorRT-8.5.2.2/uff/uff-0.6.9-py2.py3-none-any.whl
+pip install TensorRT-8.5.2.2/graphsurgeon/graphsurgeon-0.4.6-py2.py3-none-any.whl
+pip install pycuda
+
+# export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:절대경로(pwd)/TensorRT-8.5.2.2/lib
+cd ~
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/workspace/TensorRT-8.5.2.2/lib
+
+# 실행 파일     --onnx = onnx파일_경로    --saveEngine = 저장폴더_경로
+/workspace/TensorRT-8.5.2.2/bin/trtexec --onnx=yolov5l.onnx --saveEngine=.
+
+# 변환
+python export.py --weights yolov5s.pt --include onnx --opset 11
+python export.py --weights yolov5s.pt --include engine --device 0
+
+# 실행
+python detect.py --weights yolov5s.pt
+python detect.py --weights yolov5s.onnx
+python detect.py --weights yolov5s.engine
+

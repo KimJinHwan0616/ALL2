@@ -1,0 +1,19 @@
+<VMware>
+
+
+<Centos>
+
+https://www.centos.org/ -> Download -> x86.64
+-> http://mirror.anigil.com/CentOS/7.9.2009/isos/x86_64/
+-> CentOS-7-x86_64-Minimal-2009.iso
+
+<Putty>
+
+https://www.putty.org/ -> Download PuTTY
+-> 64-bit x86:  putty.exe
+
+아이디: bigdata
+(관리자)비밀번호: bigdata
+
+<WinSCP>
+WinSCP.net -> Download -> DOWNLOAD WINSCP 5.21.1 ( 11 MB )

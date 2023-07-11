@@ -1,0 +1,24 @@
+<시작>
+1. 소프트웨어
+
+#############
+보조 기억 장치
+
+ㅁ 플래시 메모리
+예) USB, SD(Secure Digital), SSD(Solid State Drive)
+
+트랙(track)
+
+ㅁ RAID(Redundant Array of Independent Disks)
+하드 디스크 또는 SSD를 하나의 장치처럼 사용하는 기술
+
+#############
+
+
+
+
+
+
+
+
+

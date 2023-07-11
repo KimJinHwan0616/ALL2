@@ -1,0 +1,307 @@
+가상분산모드 : 1대의 시스템이 클러스터로 작동하도록 설치하는 방식
+
+클러스터(서버 그룹) : 여러 대의 컴퓨터들이 하나의 시스템처럼 작동하는 컴퓨터들의 집합
+
+클러스터 구성
+- HDFS (데이터저장) : NameNode (2nd NameNode), DataNode
+- YRAN (리소스관리) : ResourceManager, NodeManager
+
+-------------------관리자 계정 설정-------------------
+
+su -	# 관리자 계정(root)
+bigdata	# 비밀번호
+
+date -s '2022-07-26 12:08'   # 현재시간(24시) 설정
+ip addr			# ip 확인 - 192.168.163.130
+
+vi /etc/hosts
+i
+
+192.168.163.130 bigdata	# ip 변경 후 저장
+
+esc
+:wq
+
+passwd hadoop	# hadoop 계정 비밀번호 설정
+bigdata		# 비밀번호
+bigdata		# 비밀번호 확인
+
+-------------------방화벽-------------------
+
+systemctl  stop  firewalld		# 방화벽 중지
+systemctl  disable  firewalld		# 방화벽 자동실행 중지
+
+-------------------공개키 설정-------------------
+###
+hadoop01 <-> hadoop02 <-> hadoop03 <-> hadoop04
+NameNode <-> DataNode <-> ResourceManager <-> NodeManager
+
+각 시스템에 ssh 접속 시 아이디/비밀번호를 계속 입력해야함
+따라서, hadoop01에서 로그인 계정에 대한 공개키를 생성 후 각 시스템에 복사
+###
+
+su hadoop   # 관리자 계정(hadoop)
+cd	    # hadoop 홈 디렉토리
+
+ssh-keygen  -t   rsa   -P   ""		# hadoop 계정 공개키 생성
+enter				# 공개키 저장위치 = 기본위치
+
+ssh-copy-id  -i   ~/.ssh/id_rsa.pub hadoop@bigdata	# 생성한 공개키 centos7 서버 복사
+yes
+bigdata		# 비밀번호 입력
+
+-------------------가상분산모드 환경설정-------------------
+###
+core-site.xml : hadoop 전체 설정
+hdfs-site.xml : hdfs 설정
+yarn-site.xml : yarn 설정
+mapred-site.xml : 맵리듀스 설정
+###
+
+cd $HAD  [탭키]
+cd etc/hadoop	# hadoop 환경설정 디렉토리 이동
+
+vi  core-site.xml	# 편집기1
+i
+
+## 추가 후 저장
+<configuration>
+
+<property>
+    <name>fs.defaultFS</name>
+    <value>hdfs://localhost:9000</value>
+</property>
+<property>
+    <name>hadoop.tmp.dir</name>
+    <value>/usr/share/hadoop/tmp</value>
+</property>
+
+</configuration>
+##
+
+esc
+:wq
+
+vi hdfs-site.xml	# 편집기2
+i
+
+## 추가 후 저장
+<configuration>
+
+<property>
+  <name>dfs.replication</name>
+  <value>1</value>
+</property>
+<property>
+  <name>dfs.namenode.name.dir</name>
+  <value>/usr/share/hadoop/data/dfs/namenode</value>
+</property>
+<property>
+  <name>dfs.datanode.data.dir</name>
+  <value>/usr/share/hadoop/data/dfs/datanode</value>
+</property>
+
+</configuration>
+##
+
+esc
+:wq
+
+vi yarn-site.xml	# 편집기3
+i
+
+## 추가 후 저장
+<configuration>
+
+<property>
+        <name>yarn.resourcemanager.hostname</name>
+        <value>localhost</value>
+</property>
+<property>
+        <name>yarn.nodemanager.aux-services</name>
+        <value>mapreduce_shuffle</value>
+</property>
+
+</configuration>
+##
+
+esc
+:wq
+
+vi mapred-site.xml		# 편집기4
+i
+
+## 추가 후 저장
+<configuration>
+
+<property>
+       <name>mapreduce.framework.name</name>
+       <value>yarn</value>
+</property>
+<property>
+       <name>yarn.app.mapreduce.am.env</name>
+       <value>HADOOP_MAPRED_HOME=/usr/share/hadoop</value>
+</property>
+<property>
+        <name>mapreduce.map.env</name>
+        <value>HADOOP_MAPRED_HOME=/usr/share/hadoop</value>
+</property>
+<property>
+        <name>mapreduce.reduce.env</name>
+        <value>HADOOP_MAPRED_HOME=/usr/share/hadoop</value>
+</property>
+
+</configuration>
+##
+
+esc
+:wq
+
+-------------------가상분산모드 디렉토리 생성-------------------
+
+cd $HADOOP_HOME
+
+mkdir tmp
+mkdir -p data/dfs/namenode
+mkdir -p data/dfs/datanode
+
+chmod 755 data/dfs/namenode
+chmod 755 data/dfs/datanode
+
+ls  data/dfs	# datanode, namenode 파일 확인
+
+-------------------가상분산모드 실행 준비1 : namenode 포맷-------------------
+
+hdfs  namenode  -format	# namenode has been successfully formatted. 확인 (중간쯤)
+
+-------------------가상분산모드 실행준비2 : datanode 실행-------------------
+
+start-dfs.sh	# starting namenode, starting datanode, secondary namenodes 확인
+
+-------------------가상분산모드 실행준비3 : ResourceManager/NodeManager 실행-------------------
+
+start-yarn.sh	# starting resourcemanager, starting nodemanager 확인
+
+-------------------가상분산모드 실행준비4 : HDFS, YARN 실행여부 확인-------------------
+
+jps	# jps, NameNode, DataNode, ResourceManager, SecondaryNameNode, NodeManager 6개 확인
+
+-------------------가상분산모드 실행준비5 :  datanode 실행 상황 확인-------------------
+
+hdfs  dfsadmin  -report	# Configured Capacity: 18238930944 (16.99 GB) 확인
+
+-------------------가상분산모드 실행준비6 : ResourceManager 실행여부-------------------
+
+yarn  node  -list	# RUNNING	?????:8042 확인
+
+-------------------가상분산모드 실행확인 : HDFS 웹 UI-------------------
+
+브라우저 주소 : "가상머신IP:9870" (hadoop 3.x)		# http://192.168.163.130:9870
+
+-------------------사용자 HDFS 작업 영역 생성-------------------
+###
+hadoop 사용자가 HDFS 저장소에 파일을 업로드할 수 있도록 저장공간을 생성
+즉, 데이터 처리 작업을 수행하려면 먼저 관련 데이터를 HDFS 저장영역에 업로드
+###
+
+hadoop fs  -mkdir  -p   /user/hadoop
+hadoop fs  -chown  hadoop:hadoop  /user/hadoop
+hadoop fs  -mkdir  /tmp
+hadoop fs  -chmod   777   /tmp
+
+hadoop  fs  -ls  /   	# user, tmp 폴더 확인
+hadoop  fs  -ls  /user	# user/hadoop 확인
+
+-------------------가상분산모드 실행 테스트1-------------------
+
+cd $HAD	[탭키]
+
+hadoop jar share/hadoop/mapreduce/hadoop-mapreduce-examples-3.2.4.jar pi 16 1000
+
+###
+시스템을 종료/재시작해야 할 경우 (예: 설정파일 변경 시)
+###
+
+start-dfs.sh	# 시작순서
+start-yarn.sh
+
+stop-yarn.sh	# 종료순서
+stop-dfs.sh
+
+poweroff
+
+-------------------가상분산모드 실행 테스트2 - 단어검색-------------------
+
+su hadoop
+
+source /etc/profile
+
+cd $HAD	[탭키]
+
+start-dfs.sh
+start-yarn.sh
+
+jps	# 6개 프로세스 실행 확인
+
+hadoop  fs  -mkdir   input			# HDFS의 /user/hadoop에 input 디렉토리 생성
+hadoop  fs  -ls   .				# 생성한 디렉토리 확인
+hadoop  fs   -put   etc/hadoop/*   input	# hadoop 설정 파일들을 HDFS의 input 으로 복사
+hadoop  fs  -ls   input			# 복사한 파일들 확인
+hadoop  fs  -rm  -R  input/shellprofile.d	# input 디렉토리 중 shellprofile.d 디렉토리 삭제
+
+###
+hadoop  fs   -rm  -R  input/logs		# input 디렉토리 중 logs 디렉토리 삭제
+HDFS의 (/user/hadoop) input 디렉토리의 파일들을 이용해서
+특정문자열을 포함하는 문자열을 찾은 후 결과를 HDFS의 (/user/hadoop) output20에 저장
+###
+
+# 2줄 복사 한번에 실행
+hadoop jar share/hadoop/mapreduce/hadoop-mapreduce-examples-3.2.4.jar \
+grep input output20 'dfs[a-z]'
+
+hadoop  fs  -cat  output20/*		# HDFS의 (/user/hadoop/) output20에 저장된 결과 확인
+
+###
+HDFS의 (/user/hadoop) input 디렉토리의 파일들을 이용해서
+특정문자열을 포함하는 문자열을 찾아서 결과를HDFS의 (/user/hadoop) output21b에 저장
+###
+
+# 2줄 복사 한번에 실행
+hadoop jar share/hadoop/mapreduce/hadoop-mapreduce-examples-3.2.4.jar \
+grep   input   output21b   'dfs[a-z.]+'
+
+hadoop  fs  -cat  output21b/*		# HDFS의 (/user/hadoop/) output21에 저장된 결과 확인
+
+-------------------가상분산모드 실행 테스트3 - 워드카운트-------------------
+
+# 2줄 복사 한번에 실행
+hadoop jar share/hadoop/mapreduce/hadoop-mapreduce-examples-3.2.4.jar \
+wordcount    input   output22
+
+hadoop  fs  -cat  output22/*		# HDFS의 (/user/hadoop/) output22에 저장된 결과 확인
+
+-------------------가상분산모드 실행 테스트4 - 연설문 워드카운트 : trump_ko.txt-------------------
+###
+WinSCP -> hadoop@192.168.163.130 (가상환경) -> home/hadoop/ -> trump_ko.txt, stevejobs_ko.txt 복사
+###
+
+ls ~	# trump_ko.txt, stevejobs_ko.txt 확인
+
+hadoop  fs   -put   ~/trump_ko.txt   .
+hadoop  fs  -ls  .
+
+hadoop jar share/hadoop/mapreduce/hadoop-mapreduce-examples-3.2.4.jar \
+wordcount    trump_ko.txt    output23
+
+hadoop  fs  -cat   output23/*
+
+-------------------가상분산모드 실행 테스트5 - 졸업축사 워드카운트 : stevejobs_ko.txt-------------------
+
+hadoop  fs   -put   ~/stevejobs_ko.txt*   .
+hadoop  fs  -ls  .
+
+hadoop jar share/hadoop/mapreduce/hadoop-mapreduce-examples-3.2.4.jar \
+wordcount    stevejobs_ko.txt    output24
+
+hadoop  fs  -cat   output24/*
+------------------------------------------------------------------------------------------------------------------

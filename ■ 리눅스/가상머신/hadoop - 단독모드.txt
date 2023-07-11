@@ -1,0 +1,82 @@
+-------------------관리자 계정 설정------------------
+
+su -	# 관리자 계정(root)
+bigdata	# 비밀번호
+
+sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config  	# SELINUX (security enhanced) 기능 끄기
+
+# vi /etc/selinux/config 		# 변경 항목 확인
+
+sed -i "\$anet.ipv6.conf.all.disable_ipv6 = 1" /etc/sysctl.conf 		# sed -i \$a추가할문자열 파일명
+sed -i "\$anet.ipv6.conf.default.disable_ipv6 = 1" /etc/sysctl.conf		# sed -i \$a추가할문자열 파일명
+
+# vi /etc/sysctl.conf 		# 추가 항목 확인
+
+-------------------jdk 설치-------------------
+
+yum install -y wget				# wget으로 amazon-corretto-8-x64-linux-jdk.rpm를 다운로드
+wget https://corretto.aws/downloads/latest/amazon-corretto-8-x64-linux-jdk.rpm
+yum localinstall -y ama [탭키]
+java -version				# openjdk version "1.8.0_342" 확인
+
+-------------------hadoop 설치-------------------
+
+cd ~
+wget https://dlcdn.apache.org/hadoop/common/hadoop-3.2.4/hadoop-3.2.4.tar.gz --no-check-certificate
+
+tar zxf ha	[탭키]	# 압축 해제
+ls           	# hadoop-3.2.4 디렉토리 확인
+
+mv hadoop-3.2.4  hadoop   	# hadopp-3.2.4 -> hadoop 이름 변경
+mv hadoop  /usr/share/   	# hadoop -> usr/share 이동
+ls  /usr/share        	# hadoop 디렉토리 확인
+
+cd /usr/share/hadoop/bin
+
+------------------- jdk, hadoop 환경설정 -------------------
+
+vi /etc/profile   	# 환경변수 파일 편집
+
+Shift + G		# 맨 아래로 이동
+i
+
+## 추가 후 저장
+export JAVA_HOME=/usr/lib/jvm/java-1.8.0-amazon-corretto
+export PATH=$PATH:$JAVA_HOME/bin
+
+export HADOOP_HOME=/usr/share/hadoop
+export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
+##
+
+esc
+:wq
+
+source /etc/profile  	# 환경변수 시스템 적용
+
+------------------- hadoop 단독 모드 설정 -------------------
+
+cd  $HADOOP_HOME/etc/hadoop  	# hadoop 환경설정파일이 디렉토리 이동
+vi  hadoop-env.sh
+
+Shift + G		# 맨 아래로 이동
+i
+
+export JAVA_HOME=/usr/lib/jvm/java-1.8.0-amazon-corretto	# 추가 후 저장
+
+esc
+:wq
+
+cd $HADOOP_HOME
+mkdir logs
+
+useradd hadoop		# 계정 추가
+chown hadoop:hadoop -R /usr/share/hadoop		# hadoop 디렉토리 소유자를 hadoop으로 변경함
+chmod 755 -R /usr/share/hadoop			# hadoop 디렉토리 권한을 755로 바꾸기
+
+------------------- hadoop 단독 모드 실행 -------------------
+
+su hadoop		# 관리자 계정(hadoop)
+
+cd $HAD [탭키]
+
+hadoop jar share/hadoop/mapreduce/hadoop-mapreduce-examples-3.2.4.jar pi 16 1000
