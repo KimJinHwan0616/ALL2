@@ -46,13 +46,19 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<apollo::d
   SwmLidar2cameraFusionComponent() = default;
   ~SwmLidar2cameraFusionComponent() = default;
   bool Init() override;
+
+  // message(shard_ptr) → PointCloud
   bool Proc(const std::shared_ptr<apollo::drivers::PointCloud>& message) override;
 
  private:
   bool InitAlgorithmPlugin();
+
+  // PointCloud → message,
+  // PerceptionObstacles → in_box_message, out_message
   bool InternalProc(const std::shared_ptr<const drivers::PointCloud>& in_pcd_message,
                     const std::shared_ptr<PerceptionObstacles>& in_box_message,
                     const std::shared_ptr<PerceptionObstacles>& out_message);
+
  private:
   int test_cnt ;
   static std::mutex s_mutex_;
@@ -67,22 +73,27 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<apollo::d
   double box_width;
   double offset_top, offset_bottom;
   double offset_front, offset_width;
+  ////
 
   std::shared_ptr<apollo::cyber::Writer<PerceptionObstacles>> writer_;
   std::shared_ptr<apollo::cyber::Reader<PerceptionObstacles>> box_reader_;
 
-  std::string camera_name_; 
-  std::string lidar_name_; 
+  std::string camera_name_;
+  std::string lidar_name_;
 
+  // { 값, ..., 값 }
   std::vector<std::string> camera_names_; 
   std::vector<std::string> lidar_names_; 
 
+  // 사전: {string : Matrix4d, ..., string : Matrix4d }
+  // { camera_name:cam_extrinsic, ..., camera_name:cam_extrinsic }
   std::map<std::string, Eigen::Matrix4d> extrinsic_map_;
+
+  // { camera_name:intrinsic, ..., camera_name:intrinsic }
   std::map<std::string, Eigen::Matrix3f> intrinsic_map_;
+
+  // { camera_name:P, ..., camera_name:P }
   std::map<std::string, Eigen::Matrix<double, 3, 4>> resultMatrix_map_;
-
-  std::map<std::string, Eigen::Matrix<double, 3, 4>> extrinsic_distor_map_;
-
 
   struct alignas(16) PointIL {
     float x = 0;
@@ -94,6 +105,7 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<apollo::d
   };
   // std::shared_ptr<PointIL> box_roi_pcd_msg_;
 
+  // {x,y,z,id,label,sub_label} → box_roi_pcd_msgs_
   std::vector<std::shared_ptr<PointIL>> box_roi_pcd_msgs_;
   
 

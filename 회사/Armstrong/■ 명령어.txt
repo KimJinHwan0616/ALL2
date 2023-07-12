@@ -1,0 +1,30 @@
+    <Amstrong/a50>
+
+# 도커 시작 #
+./docker/scripts/dev_start.sh
+./dev_start.sh
+
+# 도커 진입 #
+./docker/scripts/dev_into.sh
+./dev_into.sh
+##################################################
+    </apollo>
+
+# 빌드 #
+./apollo.sh build_opt_gpu
+
+# 드림뷰 #
+./scripts/bootstrap.sh
+
+CPU - http://localhost:8888
+Orin - 192.168.20.124:5551
+
+# 채널 #
+cyber_monitor    # 확인
+cyber_visualizer   # 시각
+
+cyber_recorder play -f 레코더 -l    # 시작
+cyber_recorder info 레코더    # 정보
+
+cyber_launch start 런치    # 소스 코드 실행
+

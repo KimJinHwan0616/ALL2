@@ -1,0 +1,35 @@
+    <Amstrong/a50>
+
+1. 원격 저장소 - 업데이트
+git remote update
+
+2. 로컬 저장소 - 브랜치 생성
+git checkout -b '#이슈번호-이슈'    # tab 자동완성
+예) git checkout -b '#459-camera-obstacle-detection-component'
+
+3. 원격 저장소 - 브랜치 불러오기
+git checkout -b '#이슈번호-이슈' origin/#이슈번호-이슈
+예) git checkout -b '#459-camera-obstacle-detection-component' origin/#459-camera-obstacle-detection-component
+##################################################
+    </apollo>
+
+4. 빌드
+./apollo.sh build_opt_gpu
+
+5. 채널 시작
+cyber_recorder play -f 레코드* -l
+
+cyber_recorder play -f data/bag/test/20230711171726.record.00000 -l
+cyber_recorder play -f data/bag/camera_obstacle_detection_component/20230705110955.record.0000* -l
+
+6. 소스 코드 실행
+cyber_launch start 런치
+
+cyber_launch start modules/perception/production/launch/perception_swm_lidar2camera_fusion.launch
+
+7. 파일 수정
+4 → 6 반복
+
+
+
+

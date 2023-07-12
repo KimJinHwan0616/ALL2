@@ -25,107 +25,16 @@
 #include <boost/algorithm/string.hpp>
 #include <yaml-cpp/yaml.h>
 
+#include "opencv2/opencv.hpp"
+
+using namespace std;
+
 namespace apollo {
 namespace perception {
 namespace onboard {
 
-
 uint32_t SwmLidar2cameraFusionComponent::s_seq_num_ = 0;
 std::mutex SwmLidar2cameraFusionComponent::s_mutex_;
-
-static bool LoadIntrinsics(const std::string &yaml_file,
-                          Eigen::Matrix3d *camera_intrinsic,
-                          Eigen::Matrix<double, 1, 5> *camera_distortion) {
-
-  if (!apollo::cyber::common::PathExists(yaml_file)) {
-    AINFO << yaml_file << " does not exist!";
-    return false;
-  }
-
-  YAML::Node node = YAML::LoadFile(yaml_file);
-  double fx = 0.0;
-  double fy = 0.0;
-  double cx = 0.0;
-  double cy = 0.0;
-  double s = 0.0;
-
-  double kk1 = 0.0;
-  double kk2 = 0.0;
-  double kk3 = 0.0;
-  double pk1 = 0.0;
-  double pk2 = 0.0;
-
-  try {
-    if (node.IsNull()) {
-      AINFO << "Load " << yaml_file << " failed! please check!";
-      return false;
-    }
-    // qw = node["transform"]["rotation"]["w"].as<double>();
-    fx = node["K"][0].as<double>();
-    s = node["K"][1].as<double>();
-    cx = node["K"][2].as<double>();
-    fy = node["K"][4].as<double>();
-    cy = node["K"][5].as<double>();
-
-    kk1 = node["D"][0].as<double>();
-    kk2 = node["D"][1].as<double>();
-    kk3 = node["D"][2].as<double>();
-    pk1 = node["D"][3].as<double>();
-    pk2 = node["D"][4].as<double>();
-
-  } catch (YAML::InvalidNode &in) {
-    AERROR << "load camera intrinsic file " << yaml_file
-           << " with error, YAML::InvalidNode exception";
-    return false;
-  } catch (YAML::TypedBadConversion<double> &bc) {
-    AERROR << "load camera intrinsic file " << yaml_file
-           << " with error, YAML::TypedBadConversion exception";
-    return false;
-  } catch (YAML::Exception &e) {
-    AERROR << "load camera intrinsic file " << yaml_file
-           << " with error, YAML exception:" << e.what();
-    return false;
-  }
-
-  // camera_intrinsic: 영행렬(3x3)
-  camera_intrinsic->setConstant(0);
-
-  // camera_distortion: 영행렬(1x5)
-  camera_distortion->setConstant(0);
-
-  (*camera_intrinsic)(0, 0) = fx;
-  (*camera_intrinsic)(0, 1) = s;
-  (*camera_intrinsic)(0, 2) = cx;
-  (*camera_intrinsic)(1, 1) = fy;
-  (*camera_intrinsic)(1, 2) = cy;
-  (*camera_intrinsic)(2, 2) = 1;
-
-  (*camera_distortion)(0) = kk1;
-  (*camera_distortion)(1) = kk2;
-  (*camera_distortion)(2) = kk3;
-  (*camera_distortion)(3) = pk1;
-  (*camera_distortion)(4) = pk2;
-
-  // 확인
-  // std::cout << "Intrinsic Matrix"<< std::endl;
-  // for (int i = 0; i < 3; ++i) {
-  // for (int j = 0; j < 3; ++j) {
-  //   std::cout << (*camera_intrinsic)(i, j) << " ";
-  // }
-  // std::cout << std::endl;
-  // }
-
-  // 확인
-  // std::cout << "Distortion Matrix"<< std::endl;
-  // for (int i = 0; i < 1; ++i) {
-  // for (int j = 0; j < 5; ++j) {
-  //   std::cout << (*camera_distortion)(i, j) << " ";
-  // }
-  // std::cout << std::endl;
-  // }
-
-    return true;
-}
 
 static bool LoadExtrinsics(const std::string &yaml_file,
                            Eigen::Matrix4d *camera_extrinsic) {
@@ -266,54 +175,35 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
                                                   const std::shared_ptr<PerceptionObstacles>& out_message){
   box_roi_pcd_msgs_.clear();
 
-  // ①
   // pixel point(3x1): 선언
   Eigen::Matrix<double, 3, 1> projection_matrix_31d;
 
-  //// Camera point(3x1): 선언
-  Eigen::Matrix<double, 3, 1> camera_points;
-
-  ////////////////////////////////////////////////////
-  // cam_intrinsic Matrix(3x3): 선언
-  Eigen::Matrix3d cam_intrinsic;
-  Eigen::Matrix<double, 1, 5> camera_distortion;
-
-  // cam_intrinsic Matrix(3x3): 초기화
-  LoadIntrinsics(FLAGS_obs_sensor_intrinsic_path + "/" + "cam_a_1" +
-                      "_intrinsics.yaml",
-                  &cam_intrinsic, &camera_distortion);
-
-  double k1 = camera_distortion(0);
-  double k2 = camera_distortion(1);
-  double k3 = camera_distortion(2);
-  double p1 = camera_distortion(3);
-  double p2 = camera_distortion(4);
-
-  // 반복문 출력됨
-  // std::cout << k1 << "\n";
-  // std::cout << k2 << "\n";
-  // std::cout << k3 << "\n";
-  // std::cout << p1 << "\n";
-  // std::cout << p2 << "\n";
-  ////////////////////////////////////////////////////
-
-  ////
   box_width = 1.87;
   offset_top = 5;
   offset_width = box_width/2 + 2.5;
   offset_bottom = 0.1;
 
   offset_front = 3.5 + 2.5; // 
-  ////
 
-  // 
+  // cv::Mat img = cv::imread("/apollo/modules/perception/onboard/component/black.jpg");
+  // cv::Mat img(1080, 1920, CV_8UC3, cv::Scalar(255, 255, 255));
+  cv::Mat img = cv::imread("/apollo/data/input_img/1.jpg");
+
+  if (img.empty()) {
+    std::cout << "img load fail";
+  }
+
+  // 프레임에 있는 point 1개
   for (auto point : in_pcd_message->point()) {
     //// 조건문 추가
-    if (point.z() < offset_top && 
-        offset_bottom < point.z() && 
-        point.y() < offset_front &&
-        -offset_width < point.x() && point.x() < offset_width
-        ) {
+    // if (point.z() < offset_top && 
+    //     offset_bottom < point.z() && 
+    //     point.y() < offset_front &&
+    //     -offset_width < point.x() && point.x() < offset_width
+    //     ) {
+
+    // 임시
+    if (point.y() < 50) {
 
       // homo point Matrix(4x1): 선언
       // Eigen::Matrix<double, 4, 1>  bp_projection_41d = Eigen::Matrix<double, 4, 1> ::Identity();
@@ -326,52 +216,25 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
       // resultMatrix_map_[camera_name] = resultMatrix;
       projection_matrix_31d = resultMatrix_map_[camera_names_[0]] * bp_projection_41d ;
 
-      //// 
-      // Camera point(3x1): 초기화
-      camera_points = extrinsic_distor_map_[camera_names_[0]] * bp_projection_41d;
-
-      // distortion
-      auto normal_u = camera_points(0)/std::abs(camera_points(2));
-      auto normal_v = camera_points(1)/std::abs(camera_points(2));
-
-      double r_square = normal_u * normal_u + normal_v * normal_v;
-
-      double distor_u = (1 + k1*r_square + k2*r_square*r_square + k3*r_square*r_square*r_square) * normal_u + 2*p1*normal_u*normal_v + p2* (r_square + 2*normal_u*normal_u);
-      double distor_v = (1 + k1*r_square + k2*r_square*r_square + k3*r_square*r_square*r_square) * normal_v + p1*(r_square + 2*normal_v*normal_v) + 2*p2*normal_u*normal_v;
-
-      // uv_points(3x1): 선언 + 초기화
-      Eigen::Matrix<double, 3, 1> uv_points;
-      uv_points << distor_u, distor_v, 1;
-
-      // pixel_points(3x1): 선언 + 초기화
-      Eigen::Matrix<double, 3, 1> pixel_points;
-      pixel_points = intrinsic_map_[camera_names_[0]].cast<double>() * uv_points;
-
-      // 확인
-      // std::cout << "(" << pixel_points(0) << ", " << pixel_points(1) << ", " << pixel_points(2) << ")" << std::endl;
-      //
-
+      // 박스안에 있는 point 1개
       int box_id = 0;
       for(const auto& box : in_box_message->perception_obstacle()){
 
-        // auto nomal_x = projection_matrix_31d(0)/std::abs(projection_matrix_31d(2));
-        // auto nomal_y = projection_matrix_31d(1)/std::abs(projection_matrix_31d(2));
-
-        ////
-        auto nomal_x = std::round( pixel_points(0) );
-        auto nomal_y = std::round( pixel_points(1) );
-        ////
+        auto nomal_x = std::round( projection_matrix_31d(0)/std::abs(projection_matrix_31d(2)) );
+        auto nomal_y = std::round( projection_matrix_31d(1)/std::abs(projection_matrix_31d(2)) );
 
         if( ((box.bbox2d().xmin() <= nomal_x) && ( nomal_x <= box.bbox2d().xmax())) && ((box.bbox2d().ymin() <= nomal_y) && ( nomal_y <= box.bbox2d().ymax())) ){
 
-        // auto box_roi_pcd_msg_ = std::make_shared<PointIL>;
-        std::shared_ptr<PointIL> box_roi_pcd_msg_ = std::make_shared<PointIL>();
-        box_roi_pcd_msg_-> x = point.x();
-        box_roi_pcd_msg_-> y = point.y();
-        box_roi_pcd_msg_-> z = point.z();
-        box_roi_pcd_msg_-> id = box_id;
-        box_roi_pcd_msg_-> label = box.type();
-        box_roi_pcd_msg_-> sub_label = box.sub_type();
+          cv::circle(img, cv::Point(nomal_x, nomal_y), 5, cv::Scalar(0, 0, 255), -1); // 빨간색 원을 그림
+
+          // auto box_roi_pcd_msg_ = std::make_shared<PointIL>;
+          std::shared_ptr<PointIL> box_roi_pcd_msg_ = std::make_shared<PointIL>();
+          box_roi_pcd_msg_-> x = point.x();
+          box_roi_pcd_msg_-> y = point.y();
+          box_roi_pcd_msg_-> z = point.z();
+          box_roi_pcd_msg_-> id = box_id;
+          box_roi_pcd_msg_-> label = box.type();
+          box_roi_pcd_msg_-> sub_label = box.sub_type();
 
         // 확인
         // std::cout << "(" << box_roi_pcd_msg_->x
@@ -381,17 +244,34 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
         //     << "," << box_roi_pcd_msg_->label
         //     << ")" << std::endl;
 
-        // {x, y, z, id, label, sub_label}
-        box_roi_pcd_msgs_.push_back(std::move(box_roi_pcd_msg_));
+          // {x, y, z, id, label, sub_label}
+          box_roi_pcd_msgs_.push_back(std::move(box_roi_pcd_msg_));
 
-        break;
+          break;
         }
 
-        box_id++;
-      }
-    }; 
-    }
+          box_id++;
 
+        // for (const auto& msg : box_roi_pcd_msgs_) {
+        // cout << "(" << msg->x
+        //       << "," << msg->y
+        //       << "," << msg->z
+        //       << "," << msg->id
+        //       << "," << msg->label
+        //       << ")" << endl;
+        // }
+      }
+
+      // cout << "box_id : " << box_id << endl;
+
+    };
+  }
+
+  std::string img_time = std::to_string(Time::Now().ToNanosecond());
+  std::string  file_time_path= "/apollo/data/output_img/"+img_time+".jpg";
+  cv::imwrite(file_time_path, img);
+
+  cout << "print..." << img_time << endl;
   return true;
 }
 
@@ -424,20 +304,6 @@ bool SwmLidar2cameraFusionComponent::InitAlgorithmPlugin() {
     AINFO << "#intrinsics of " << camera_name << ": "
           << intrinsic_map_[camera_name];
 
-    // Camera intrinsic Matrix(3x3): 선언
-    Eigen::Matrix3d cam_intrinsic;
-    // Camera distortion Matrix(1x5): 선언
-    Eigen::Matrix<double, 1, 5> camera_distortion;
-
-    // Camera intrinsic Matrix(3x3): 초기화
-    // Camera distortion Matrix(1x5): 초기화
-    LoadIntrinsics(FLAGS_obs_sensor_intrinsic_path + "/" + "cam_a_1" +
-                       "_intrinsics.yaml",
-                   &cam_intrinsic, &camera_distortion);
-    //
-    // test_map_[camera_name] = cam_intrinsic;
-    //
-
     // Camera extrinsic Matrix(4x4): 선언
     Eigen::Matrix4d cam_extrinsic;
 
@@ -453,15 +319,6 @@ bool SwmLidar2cameraFusionComponent::InitAlgorithmPlugin() {
     Eigen::Matrix<double, 3, 4>  cam_extrinsic_34d;
     cam_extrinsic_34d = cam_extrinsic.inverse().block<3, 4>(0, 0);
 
-    // 확인
-    // std::cout << "Camera extrinsic Matrix(3x4)⁻¹"<< std::endl;
-    // for (int i = 0; i < 3; ++i) {
-    // for (int j = 0; j < 4; ++j) {
-    //   std::cout << (cam_extrinsic_34d)(i, j) << " ";
-    // }
-    // std::cout << std::endl;
-    // }
-
     // imu extrinsic Matrix(4x4): 선언
     Eigen::Matrix4d lid_extrinsic;
 
@@ -472,31 +329,6 @@ bool SwmLidar2cameraFusionComponent::InitAlgorithmPlugin() {
     // imu extrinsic Matrix(3x4)⁻¹: 선언 + 초기화
     Eigen::Matrix<double, 4, 4>  lid_extrinsic_44d;
     lid_extrinsic_44d = lid_extrinsic.inverse().block<4, 4>(0, 0);
-
-    // 확인
-    // std::cout << "imu extrinsic Matrix(3x4)⁻¹"<< std::endl;
-    // for (int i = 0; i < 4; ++i) {
-    // for (int j = 0; j < 4; ++j) {
-    //   std::cout << (lid_extrinsic_44d)(i, j) << " ";
-    // }
-    // std::cout << std::endl;
-    // }
-
-    //// imu → Camera Matrix(3,4): 선언 + 초기화
-    Eigen::Matrix<double, 3, 4> lidar2cameraMatrix;
-    lidar2cameraMatrix = cam_extrinsic_34d * lid_extrinsic_44d;
-
-    // 확인
-    // std::cout << "lidar2cameraMatrix"<< std::endl;
-    // for (int i = 0; i < 3; ++i) {
-    // for (int j = 0; j < 4; ++j) {
-    //   std::cout << (lidar2cameraMatrix)(i, j) << " ";
-    // }
-    // std::cout << std::endl;
-    // }
-
-    //// Key: camera_name, Value: lidar2cameraMatrix
-    extrinsic_distor_map_[camera_name] = lidar2cameraMatrix;
 
     // Projection Matrix(3x4): 선언
     Eigen::Matrix<double, 3, 4> resultMatrix;

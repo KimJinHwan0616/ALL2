@@ -1,0 +1,10 @@
+camera_name: "이름"
+lidar_name: "이름"
+
+fusion_main_sensor: "velodyne128"
+object_in_roi_check: true
+radius_for_roi_object_check: 120
+
+# cyber_monitor
+input_bp_channel_name: "채널"
+input_box_channel_name: "채널"

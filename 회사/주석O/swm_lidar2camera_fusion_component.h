@@ -47,7 +47,7 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<apollo::d
   ~SwmLidar2cameraFusionComponent() = default;
   bool Init() override;
 
-  // PointCloud → message
+  // message(shard_ptr) → PointCloud
   bool Proc(const std::shared_ptr<apollo::drivers::PointCloud>& message) override;
 
  private:
@@ -58,6 +58,7 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<apollo::d
   bool InternalProc(const std::shared_ptr<const drivers::PointCloud>& in_pcd_message,
                     const std::shared_ptr<PerceptionObstacles>& in_box_message,
                     const std::shared_ptr<PerceptionObstacles>& out_message);
+
  private:
   int test_cnt ;
   static std::mutex s_mutex_;
@@ -77,8 +78,8 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<apollo::d
   std::shared_ptr<apollo::cyber::Writer<PerceptionObstacles>> writer_;
   std::shared_ptr<apollo::cyber::Reader<PerceptionObstacles>> box_reader_;
 
-  std::string camera_name_; 
-  std::string lidar_name_; 
+  std::string camera_name_;
+  std::string lidar_name_;
 
   // { 값, ..., 값 }
   std::vector<std::string> camera_names_; 
@@ -93,11 +94,6 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<apollo::d
 
   // { camera_name:P, ..., camera_name:P }
   std::map<std::string, Eigen::Matrix<double, 3, 4>> resultMatrix_map_;
-
-  //// 
-  // { camera_name:R|T, ..., camera_name:R|T }
-  std::map<std::string, Eigen::Matrix<double, 3, 4>> extrinsic_distor_map_;
-  ////
 
   struct alignas(16) PointIL {
     float x = 0;

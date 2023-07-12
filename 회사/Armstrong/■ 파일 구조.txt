@@ -1,0 +1,30 @@
+launch → dag(conf, readers, ...) → conf → component.cc, build
+
+build, component.cc(msg) <- conf <- dag(conf, readers, ...) <- launch
+
+★ 모듈문제는 빌드파일에서 추가해줘야함
+
+ROS(Robot Operating System): 로봇 소프트웨어 open source '프레임워크'
+ㅁ .launch(XML): 시스템 구성 정의
+
+ㅁ .dag(Directed Acyclic Graph): task(업무) a,b,c,d를 정의하고 실행순서, 의존성 등을 지정하는 것
+    ㅁ component: 모듈 구성 요소(객체)
+
+ㅁ conf(iguration): 설정 파일 폴더
+
+ㅁ .proto(PROTocol buffers): 직렬화(데이터 → 이진 데이터)
+
+############################################
+    <object detection>
+yolox_trt_obstacle_detector.h
+yolox_trt_obstacle_detector.cc
+
+    <lidar>
+detection_component.cc
+detection_component.h
+
+
+
+
+
+

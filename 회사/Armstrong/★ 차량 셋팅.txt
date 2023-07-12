@@ -1,0 +1,10 @@
+1. 브레이크 밟은 상태로 '시동' 버튼 → 'GPS' 버튼
+
+2. Orin이 작동해야하므로 일정 시간 대기 후 '브랜치' 체크
+git status → git stash → git checkout main
+→ git pull → git branch -a → git checkout origin/#이슈번호-이슈
+
+3. 드림뷰 차량 설정 → 'set up' 버튼
+CPU - http://localhost:8888
+Orin - 192.168.20.124:5551
+
