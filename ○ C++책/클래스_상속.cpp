@@ -30,14 +30,21 @@ private:
     char farm_name[50];
 };
 
+class Snack : public Food{
+
+};
+
 int main()
 {
+    Food *pFood[2];
     Fruit myFruit;
+    
+    // myFruit.SetPrice(150);
+    // cout << myFruit.GetPrice() << endl;
 
-    myFruit.SetPrice(150);
-    cout << myFruit.GetPrice() << endl;
+    // myFruit.SetFarName("성안당 농장");
+    // cout << myFruit.GetFarName() << endl;
 
-    myFruit.SetFarName("성안당 농장");
-    cout << myFruit.GetFarName() << endl;
+    pFood = &myFruit;
 }
 
