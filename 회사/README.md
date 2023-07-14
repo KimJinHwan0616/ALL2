@@ -33,7 +33,7 @@ https://darkpgmr.tistory.com/190
   
   예) AT128(hesaitech 회사), RS-Bpearl(RoboSense 회사), velodyne
   ```
-
+  >Recognition: 객체 검출
 + ### 레이더 *(Radar, Radio Detection and Ranging)*
   `전자기파`
 

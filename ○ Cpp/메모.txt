@@ -1,5 +1,9 @@
-<세미콜론O>
-구조체, 클래스
+별칭(자료형)
+ㅁ using 별칭 = 식별자;    // 템플릿O
+ㅁ typedef 식별자 별칭    // 템플릿X
+
+using PointF = Point<float>;
+typedef T Type;
 ###################################
 this: 포인터
 

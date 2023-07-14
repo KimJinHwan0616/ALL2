@@ -1,3 +1,8 @@
+기본 자료형: 값    // 파일.h
+    ...
+
+예)
+sensor_name: "이름"    // Sensor Type
 camera_name: "이름"
 lidar_name: "이름"
 
@@ -6,5 +11,7 @@ object_in_roi_check: true
 radius_for_roi_object_check: 120
 
 # cyber_monitor
-input_bp_channel_name: "채널"
-input_box_channel_name: "채널"
+input_bp_channel_name: "입력 채널"
+input_box_channel_name: "입력 채널"
+
+output_channel_name: "출력 채널"

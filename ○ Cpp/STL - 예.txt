@@ -1,0 +1,17 @@
+    # vector: { 값,  ... , 값 } #
+
+ㅁ 크기 할당
+std::vector<int> numbers;
+numbers.reserve(100);  // numbers 벡터의 용량을 100으로 미리 할당
+
+    # Eigen: 행렬 #
+ㅁ 3차원
+Affine3d
+
+ㅁ 단위행렬
+행렬::Identity()      // 정적 멤버 함수
+행렬.setIdentity()    // 멤버 함수
+
+
+    # memory: 스마트 포인터 #
+std::shared_ptr<포인터 대상> 포인터 객체
