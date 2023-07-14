@@ -3,6 +3,7 @@
 
 using namespace std;
 
+// 1
 class Food {
 public:
     void SetPrice(int myprice) {
@@ -17,6 +18,7 @@ private:
     int price;
 };
 
+// 2
 class Fruit : public Food {
 public:
     void SetFarName(const char *farm) {
@@ -30,10 +32,7 @@ private:
     char farm_name[50];
 };
 
-class Snack : public Food{
-
-};
-
+// 3
 int main()
 {
     Food *pFood[2];
@@ -45,6 +44,6 @@ int main()
     // myFruit.SetFarName("성안당 농장");
     // cout << myFruit.GetFarName() << endl;
 
-    pFood = &myFruit;
+    pFood[0] = &myFruit;
 }
 
