@@ -1,4 +1,7 @@
 {
     "cmake.configureOnOpen": false,
-    "prettier.tabWidth": 2
+    "prettier.tabWidth": 2,
+    "files.associations": {
+        "ostream": "cpp"
+    }
 }

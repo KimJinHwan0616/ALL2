@@ -6,11 +6,13 @@ using namespace std;
 
 int main()
 {
-    vector<double> v1;
+    // vector<double> v1;
 
-    v1.push_back(13.5);
-    v1.push_back(14.1);
+    // v1.push_back(13.5);
+    // v1.push_back(14.1);
     // v1.push_back(15);
+
+    vector<double> v1 = {1, 2, 3};
 
     vector<double>::iterator itr_first, itr_last, i;
 

@@ -13,10 +13,10 @@
     <module>
 
         <name>이름</name>    #
-        <dag_conf>이름.dag</dag_conf>    #
+        <dag_conf>이름.dag</dag_conf>    # 경로
 
         <!-- if not set, use default process -->
-        <process_name></process_name>
+        <process_name>이름</process_name>    #
         <version>1.0.0</version>
     </module>
 
