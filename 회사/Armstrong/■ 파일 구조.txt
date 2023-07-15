@@ -1,7 +1,5 @@
 launch → dag(conf, readers, ...) → conf → component.cc, build
 
-build, component.cc(msg) <- conf <- dag(conf, readers, ...) <- launch
-
 ★ 모듈문제는 빌드파일에서 추가해줘야함
 
 ROS(Robot Operating System): 로봇 소프트웨어 open source '프레임워크'
