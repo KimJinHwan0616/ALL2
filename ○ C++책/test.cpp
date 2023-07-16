@@ -1,19 +1,23 @@
 #include <iostream>
-#include <typeinfo>
+#include <vector>
+#include <memory>
 
-template <typename T>
-struct Point {
-    T x;
-    T y;
+using namespace std;
+
+const std::size_t kDefaultReservePointNum = 50000;
+
+struct PointIndices {
+  PointIndices() { indices.reserve(kDefaultReservePointNum); }
+
+  vector<int> indices;
+
+  typedef shared_ptr<PointIndices> Ptr;
+  typedef shared_ptr<const PointIndices> ConstPtr;
 };
 
 int main()
 {
-    Point<float> pointFloat;
-
-    using PointType = decltype(pointFloat);
-    std::cout << typeid(PointType).name() << std::endl; 
-    std::cout << "complete";
-
-    return 0;
+    PointIndices pi;
+    cout << pi.indices.capacity();
 }
+
