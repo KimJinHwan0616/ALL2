@@ -6,6 +6,11 @@ std::atomic  // 다중
 #ifndef    // IF Not DEFined
 
 ###################################
+https://www.youtube.com/watch?v=ZNr4ZJUvfUc&list=PLJqaIeuL7nuG6EmLPNiHfHi4WWN9C5HNd&index=80
+https://www.youtube.com/watch?v=w-vCiYoPmX8&list=PLJqaIeuL7nuG6EmLPNiHfHi4WWN9C5HNd&index=84
+포인터 배열
+
+###################################
 http://www.tcpschool.com/cpp/cpp_class_accessControl
 <접근 제어 지시자>
 public → private ↔ 프로그램
