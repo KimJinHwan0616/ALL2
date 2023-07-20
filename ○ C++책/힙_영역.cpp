@@ -6,9 +6,11 @@ using namespace std;
 
 int main()
 {
-	int* ptr_int = new int;
-	*ptr_int = 100;
+// 	int* ptr_int = new int;
+// 	*ptr_int = 100;
 	
+	shared_ptr<int> ptr_int = make_shared<int>(100);
+
 	double* ptr_double = new double;
 	*ptr_double = 100.123;
 	
@@ -18,7 +20,7 @@ int main()
 	cout << "double형 숫자의 값은 " << *ptr_double << "입니다." << endl;	
 	cout << "double형 숫자의 메모리 주소는 " << ptr_double << "입니다." << endl;
 	
-	delete ptr_int;
+	// delete ptr_int;
 	delete ptr_double;
 	return 0;
 }

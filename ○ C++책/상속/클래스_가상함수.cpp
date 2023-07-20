@@ -22,7 +22,8 @@ private:
 class Fruit : public Food {
 public:
     void Setprice(int myprice) {
-        Food::SetPrice(myprice - 20);
+        // Food::SetPrice(myprice - 20);
+        myprice - 20;
     }
 };
 
