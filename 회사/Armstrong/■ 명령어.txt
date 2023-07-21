@@ -21,7 +21,7 @@ Orin - 192.168.20.124:5551
 
 # 채널 #
 cyber_monitor    # 확인
-cyber_visualizer   # 시각
+cyber_visualizer   # 시각화
 
 cyber_recorder play -f 레코더 -l    # 시작
 cyber_recorder info 레코더    # 정보

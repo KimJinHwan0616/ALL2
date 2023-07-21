@@ -185,10 +185,8 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
 
   offset_front = 3.5 + 2.5; // 
 
-  // cv::Mat img = cv::imread("/apollo/modules/perception/onboard/component/black.jpg");
-  // cv::Mat img(1080, 1920, CV_8UC3, cv::Scalar(255, 255, 255));
+  // visualize
   cv::Mat img = cv::imread("/apollo/data/input_img/1.jpg");
-
   if (img.empty()) {
     std::cout << "img load fail";
   }
@@ -217,7 +215,12 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
       projection_matrix_31d = resultMatrix_map_[camera_names_[0]] * bp_projection_41d ;
 
       // 박스안에 있는 point 1개
-      int box_id = 0;
+      unsigned int box_id = 0;
+
+      // visualize
+      std::vector<cv::Scalar> colors = {cv::Scalar(0, 0, 255), 
+      cv::Scalar(0, 255, 0), cv::Scalar(255, 0, 0), cv::Scalar(255,255,0), cv::Scalar(255,0,255)};
+
       for(const auto& box : in_box_message->perception_obstacle()){
 
         auto nomal_x = std::round( projection_matrix_31d(0)/std::abs(projection_matrix_31d(2)) );
@@ -225,10 +228,26 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
 
         if( ((box.bbox2d().xmin() <= nomal_x) && ( nomal_x <= box.bbox2d().xmax())) && ((box.bbox2d().ymin() <= nomal_y) && ( nomal_y <= box.bbox2d().ymax())) ){
 
-          cv::circle(img, cv::Point(nomal_x, nomal_y), 5, cv::Scalar(0, 0, 255), -1); // 빨간색 원을 그림
+        // if( ((box.bbox2d().xmin() <= nomal_x) && ( nomal_x <= box.bbox2d().xmax())) && 
+        //     ((box.bbox2d().ymin() <= nomal_y) && ( nomal_y <= box.bbox2d().ymax())) ){
+
+          // 해당 박스의 y 좌표 범위에서 가장 작은 좌표를 찾아서 벡터에 추가합니다.
+          // smallest_y_coordinates.push_back(static_cast<float>(point.y()));
+
+
+          cv::Scalar color;
+          if (box_id < colors.size()) {
+              color = colors[box_id];
+          } else {
+              color = cv::Scalar(255, 255, 255);  // White color for extra boxes
+          }
+          // visualize
+          // cv::circle(img, cv::Point(nomal_x, nomal_y), 5, color, -1);
+          // cv::circle(img, cv::Point(nomal_x, nomal_y), 5, cv::Scalar(0, 0, 255), -1); // 빨간색 원을 그림
 
           // auto box_roi_pcd_msg_ = std::make_shared<PointIL>;
           std::shared_ptr<PointIL> box_roi_pcd_msg_ = std::make_shared<PointIL>();
+
           box_roi_pcd_msg_-> x = point.x();
           box_roi_pcd_msg_-> y = point.y();
           box_roi_pcd_msg_-> z = point.z();
@@ -236,21 +255,39 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
           box_roi_pcd_msg_-> label = box.type();
           box_roi_pcd_msg_-> sub_label = box.sub_type();
 
-        // 확인
-        // std::cout << "(" << box_roi_pcd_msg_->x
-        //     << "," << box_roi_pcd_msg_->y
-        //     << "," << box_roi_pcd_msg_->z
-        //     << "," << box_roi_pcd_msg_->id
-        //     << "," << box_roi_pcd_msg_->label
-        //     << ")" << std::endl;
-
           // {x, y, z, id, label, sub_label}
           box_roi_pcd_msgs_.push_back(std::move(box_roi_pcd_msg_));
 
           break;
         }
+        ////
 
-          box_id++;
+        float closest_distance = std::numeric_limits<float>::max();
+        std::shared_ptr<PointIL> closest_point = nullptr;
+
+        for (const auto& msg : box_roi_pcd_msgs_) {
+            float distance = std::sqrt(msg->x * msg->x + msg->y * msg->y);
+
+            if (distance < closest_distance) {
+                closest_distance = distance;
+                closest_point = msg;
+            }
+        }      
+         
+        // 가장 가까운 좌표 출력
+        if (closest_point) {
+            // cv::circle(img, cv::Point(closest_point->x, closest_point->y), 5, cv::Scalar(255, 0, 0), -1);
+
+            // 수정중
+            // pixel_point << closest_point->x, closest_point->y, closest_point->z, 1;
+
+            std::cout << "Closest Point: (" << closest_point->x
+                      << ", " << closest_point->y
+                      << ", " << closest_point->z
+                      << ", " << closest_point->id
+                      << ", " << closest_point->label
+                      << ")" << std::endl;
+        }
 
         // for (const auto& msg : box_roi_pcd_msgs_) {
         // cout << "(" << msg->x
@@ -260,13 +297,16 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
         //       << "," << msg->label
         //       << ")" << endl;
         // }
+        ////
+
+        box_id++;
+
+
       }
-
-      // cout << "box_id : " << box_id << endl;
-
     };
   }
 
+  // visualize
   std::string img_time = std::to_string(Time::Now().ToNanosecond());
   std::string  file_time_path= "/apollo/data/output_img/"+img_time+".jpg";
   cv::imwrite(file_time_path, img);

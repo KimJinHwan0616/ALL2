@@ -109,6 +109,8 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<apollo::d
 
   // box_roi_pcd_msgs_ → {x,y,z,id,label,sub_label}
   std::vector<std::shared_ptr<PointIL>> box_roi_pcd_msgs_;
+
+  // std::vector<std::shared_ptr<PointIL>> box_min_pcd_msgs_;
   
 
 };

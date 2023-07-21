@@ -1,3 +1,7 @@
+Protocol Buffers(protobuf): 데이터 직렬화 라이브러리
+구조화된 데이터 → 직렬화(serialize), 역직렬화(deserialize)
+
+###################################
 <스레드>
 std::atomic  // 다중
 ###################################
@@ -9,8 +13,17 @@ std::atomic  // 다중
 
 2. 이항 연산자
 리턴형 operator 연산자명(매개변수);
+###################################
+< 소수점 출력 자리수 N >
 
+#include <iostream>
+#include <iomanip>
 
+int main() {
+    double value = 3.14159265358979323846;
+    std::cout << std::setprecision(N) << value << std::endl;
+    return 0;
+}
 ###################################
 <전처리 매크로>
 #ifndef    // IF Not DEFined

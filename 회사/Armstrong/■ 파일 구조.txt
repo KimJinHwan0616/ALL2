@@ -1,4 +1,4 @@
-launch → dag(conf, readers, ...) → conf → component.cc, build
+launch → dag(conf, readers, ...) → conf.pb.txt → .h → component.cc, build
 
 ★ 모듈문제는 빌드파일에서 추가해줘야함
 

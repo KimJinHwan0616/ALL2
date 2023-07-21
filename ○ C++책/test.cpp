@@ -1,23 +1,22 @@
 #include <iostream>
-#include <vector>
-#include <memory>
+#include <atomic>
+#include <thread>
 
-using namespace std;
+std::atomic<uint32_t> seq_num_(0);
 
-const std::size_t kDefaultReservePointNum = 50000;
-
-struct PointIndices {
-  PointIndices() { indices.reserve(kDefaultReservePointNum); }
-
-  vector<int> indices;
-
-  typedef shared_ptr<PointIndices> Ptr;
-  typedef shared_ptr<const PointIndices> ConstPtr;
-};
-
-int main()
-{
-    PointIndices pi;
-    cout << pi.indices.capacity();
+void incrementSequenceNumber() {
+    for (int i = 0; i < 10; ++i) {
+        uint32_t seq_num = seq_num_.fetch_add(1);
+        std::cout << "Thread ID: " << std::this_thread::get_id() << ", Sequence Number: " << seq_num << std::endl;
+    }
 }
 
+int main() {
+    std::thread thread1(incrementSequenceNumber);
+    std::thread thread2(incrementSequenceNumber);
+
+    thread1.join();
+    thread2.join();
+
+    return 0;
+}

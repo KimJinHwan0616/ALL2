@@ -185,10 +185,8 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
 
   offset_front = 3.5 + 2.5; // 
 
-  // cv::Mat img = cv::imread("/apollo/modules/perception/onboard/component/black.jpg");
-  // cv::Mat img(1080, 1920, CV_8UC3, cv::Scalar(255, 255, 255));
+  //// visualize
   cv::Mat img = cv::imread("/apollo/data/input_img/1.jpg");
-
   if (img.empty()) {
     std::cout << "img load fail";
   }
@@ -217,7 +215,13 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
       projection_matrix_31d = resultMatrix_map_[camera_names_[0]] * bp_projection_41d ;
 
       // 박스안에 있는 point 1개
-      int box_id = 0;
+      unsigned int box_id = 0;
+
+      //// visualize
+      std::vector<cv::Scalar> colors = {cv::Scalar(0, 0, 255), 
+      cv::Scalar(0, 255, 0), cv::Scalar(255, 0, 0), cv::Scalar(255,255,0), cv::Scalar(255,0,255)};
+      ////
+      
       for(const auto& box : in_box_message->perception_obstacle()){
 
         auto nomal_x = std::round( projection_matrix_31d(0)/std::abs(projection_matrix_31d(2)) );
@@ -225,53 +229,89 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
 
         if( ((box.bbox2d().xmin() <= nomal_x) && ( nomal_x <= box.bbox2d().xmax())) && ((box.bbox2d().ymin() <= nomal_y) && ( nomal_y <= box.bbox2d().ymax())) ){
 
-          cv::circle(img, cv::Point(nomal_x, nomal_y), 5, cv::Scalar(0, 0, 255), -1); // 빨간색 원을 그림
+          //// visualize
+          cv::Scalar color;
+          if (box_id < colors.size()) {
+              color = colors[box_id];
+          } else {
+              color = cv::Scalar(255, 255, 255);  // White color for extra boxes
+          }
+
+          cv::circle(img, cv::Point(nomal_x, nomal_y), 5, color, -1);
+          ////
 
           // auto box_roi_pcd_msg_ = std::make_shared<PointIL>;
           std::shared_ptr<PointIL> box_roi_pcd_msg_ = std::make_shared<PointIL>();
+
           box_roi_pcd_msg_-> x = point.x();
           box_roi_pcd_msg_-> y = point.y();
           box_roi_pcd_msg_-> z = point.z();
           box_roi_pcd_msg_-> id = box_id;
+          box_roi_pcd_msg_-> distance = std::sqrt(point.x()*point.x() + point.y()*point.y() + point.z()*point.z());
           box_roi_pcd_msg_-> label = box.type();
           box_roi_pcd_msg_-> sub_label = box.sub_type();
-
-        // 확인
-        // std::cout << "(" << box_roi_pcd_msg_->x
-        //     << "," << box_roi_pcd_msg_->y
-        //     << "," << box_roi_pcd_msg_->z
-        //     << "," << box_roi_pcd_msg_->id
-        //     << "," << box_roi_pcd_msg_->label
-        //     << ")" << std::endl;
 
           // {x, y, z, id, label, sub_label}
           box_roi_pcd_msgs_.push_back(std::move(box_roi_pcd_msg_));
 
+
           break;
         }
-
-          box_id++;
-
-        // for (const auto& msg : box_roi_pcd_msgs_) {
-        // cout << "(" << msg->x
-        //       << "," << msg->y
-        //       << "," << msg->z
-        //       << "," << msg->id
-        //       << "," << msg->label
-        //       << ")" << endl;
-        // }
+        box_id++;
       }
-
-      // cout << "box_id : " << box_id << endl;
-
     };
   }
 
+  // <vector>
+  // Loop through the box_roi_pcd_msgs_ to find the minimum distance for each box ID
+  for (const auto& box_msg : box_roi_pcd_msgs_) {
+      int box_id = box_msg->id;
+      double distance = box_msg->distance;
+
+      // Check if box_msg has smaller distance than the existing message for the same box ID
+      auto it = std::find_if(min_distance_box_msgs.begin(), min_distance_box_msgs.end(),
+                            [box_id](const std::shared_ptr<PointIL>& msg) { return msg->id == box_id; });
+
+      if (it == min_distance_box_msgs.end() || distance < (*it)->distance) {
+          // If no existing message or new message has smaller distance, update the vector
+          if (it != min_distance_box_msgs.end()) {
+              *it = box_msg;
+          } else {
+              min_distance_box_msgs.push_back(box_msg);
+          }
+      }
+  }
+
+  Eigen::Matrix<double, 4, 1> box_min_distance_41d;
+  Eigen::Matrix<double, 3, 1> pixel_coordinate_31d;
+
+
+  // Print the minimum distance for each box ID
+  for (const auto& box_msg : min_distance_box_msgs) {
+      box_min_distance_41d(0) = box_msg->x; 
+      box_min_distance_41d(1) = box_msg->y; 
+      box_min_distance_41d(2) = box_msg->z; 
+      box_min_distance_41d(3) = 1.0;       
+
+      pixel_coordinate_31d = resultMatrix_map_[camera_names_[0]] * box_min_distance_41d ;
+
+      auto x_coord = std::round( pixel_coordinate_31d(0)/std::abs(pixel_coordinate_31d(2)) );
+      auto y_coord = std::round( pixel_coordinate_31d(1)/std::abs(pixel_coordinate_31d(2)) );
+
+      cv::circle(img, cv::Point(x_coord, y_coord), 5, cv::Scalar(0, 0, 0), 20);
+
+      cout << "Box ID: " << box_msg->id << ", Minimum Distance: " << box_msg->distance << endl;
+      cout << "(" << box_msg->x << ", " << box_msg->y << ", " << box_msg->z << ")"<< endl;
+      cout << x_coord << ", " << y_coord << endl;
+  }
+
+  //// visualize
   std::string img_time = std::to_string(Time::Now().ToNanosecond());
   std::string  file_time_path= "/apollo/data/output_img/"+img_time+".jpg";
   cv::imwrite(file_time_path, img);
 
   cout << "print..." << img_time << endl;
+  ////
   return true;
 }
 

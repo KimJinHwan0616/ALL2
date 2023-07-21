@@ -1,7 +1,10 @@
 <우분투 - 파이참 설치>
 https://enant.tistory.com/10
-
 #####################################
 
+#####################################
+<과제>
 ㅁ lidar_frame.h
-base::AttributePointCloud
+base::AttributePointCloud ★
+
+ㅁ shard_ptr 마무리 정리

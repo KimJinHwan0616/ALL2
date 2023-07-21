@@ -53,8 +53,8 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<apollo::d
  private:
   bool InitAlgorithmPlugin();
 
-  // PointCloud → message,
-  // PerceptionObstacles → in_box_message, out_message
+  // message → PointCloud
+  // in_box_message, out_message → PerceptionObstacles
   bool InternalProc(const std::shared_ptr<const drivers::PointCloud>& in_pcd_message,
                     const std::shared_ptr<PerceptionObstacles>& in_box_message,
                     const std::shared_ptr<PerceptionObstacles>& out_message);
@@ -67,14 +67,16 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<apollo::d
   std::string fusion_name_;
   std::string fusion_method_;
   std::string fusion_main_sensor_;
+
   bool object_in_roi_check_ = false;
   double radius_for_roi_object_check_ = 0;
 
   double box_width;
   double offset_top, offset_bottom;
   double offset_front, offset_width;
-  ////
 
+  // writer_ → Writer(PerceptionObstacles)
+  // box_reader_ → Reader(PerceptionObstacles)
   std::shared_ptr<apollo::cyber::Writer<PerceptionObstacles>> writer_;
   std::shared_ptr<apollo::cyber::Reader<PerceptionObstacles>> box_reader_;
 
@@ -95,18 +97,28 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<apollo::d
   // { camera_name:P, ..., camera_name:P }
   std::map<std::string, Eigen::Matrix<double, 3, 4>> resultMatrix_map_;
 
+  std::vector<float> box_centers; 
+
   struct alignas(16) PointIL {
     float x = 0;
     float y = 0;
     float z = 0;
+    float distance =0;
     int id = -1;
     int label = 0;
     int sub_label = 0;
   };
   // std::shared_ptr<PointIL> box_roi_pcd_msg_;
 
-  // {x,y,z,id,label,sub_label} → box_roi_pcd_msgs_
+  // box_roi_pcd_msgs_ → {x,y,z,id,label,sub_label}
   std::vector<std::shared_ptr<PointIL>> box_roi_pcd_msgs_;
+  std::vector<std::shared_ptr<PointIL>> box_near_pcd_msgs_;
+  
+  std::vector<std::shared_ptr<PointIL>> min_distance_box_msgs;
+
+  // std::map<int, double> min_distance_map;
+
+  // std::vector<std::shared_ptr<PointIL>> box_min_pcd_msgs_;
   
 
 };
