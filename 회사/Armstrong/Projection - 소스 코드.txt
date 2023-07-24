@@ -10,9 +10,11 @@ swm_lidar2camera_fusion_component.cc
 swm_lidar2camera_fusion_component.h
 
 클래스: SwmLidar2cameraFusionComponent
+
 기능:
 ㅁ Init():
 ㅁ InitAlgorithmPlugin(): Projection Maxtrix
-ㅁ InternalProc(): 객체 순회 라이다 좌표 메세지 전달 ★
-ㅁ Proc(): 메세지 입출력
+ㅁ InternalProc(): 객체 순회 라이다 좌표 메세지 전달(처리 소스 코드) ★
+ㅁ Proc(): 입력 메세지 + 출력 메세지
+
 

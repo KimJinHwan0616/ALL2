@@ -7,4 +7,3 @@ https://enant.tistory.com/10
 ㅁ lidar_frame.h
 base::AttributePointCloud ★
 
-ㅁ shard_ptr 마무리 정리

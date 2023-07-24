@@ -32,6 +32,8 @@
 #include "cyber/direct_shared_memory/direct_shared_memory.h"
 #include <map>
 
+#include "modules/perception/base/object_types.h"
+
 namespace apollo {
 namespace perception {
 namespace onboard {
@@ -59,6 +61,8 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<apollo::d
                     const std::shared_ptr<PerceptionObstacles>& in_box_message,
                     const std::shared_ptr<PerceptionObstacles>& out_message);
 
+  std::shared_ptr<PointCloud> box_pcd_data ;
+  
  private:
   int test_cnt ;
   static std::mutex s_mutex_;
@@ -74,6 +78,8 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<apollo::d
   double box_width;
   double offset_top, offset_bottom;
   double offset_front, offset_width;
+
+  apollo::cyber::_PointXYZIT* dataPtr;
 
   // writer_ → Writer(PerceptionObstacles)
   // box_reader_ → Reader(PerceptionObstacles)
@@ -97,21 +103,22 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<apollo::d
   // { camera_name:P, ..., camera_name:P }
   std::map<std::string, Eigen::Matrix<double, 3, 4>> resultMatrix_map_;
 
+  std::vector<float> box_centers; 
+
   struct alignas(16) PointIL {
     float x = 0;
     float y = 0;
     float z = 0;
+    float distance =0;
     int id = -1;
-    int label = 0;
-    int sub_label = 0;
+    base::ObjectType label = base::ObjectType::UNKNOWN;
+    base::ObjectSubType sub_label = base::ObjectSubType::UNKNOWN;
   };
   // std::shared_ptr<PointIL> box_roi_pcd_msg_;
 
   // box_roi_pcd_msgs_ → {x,y,z,id,label,sub_label}
   std::vector<std::shared_ptr<PointIL>> box_roi_pcd_msgs_;
-
-  // std::vector<std::shared_ptr<PointIL>> box_min_pcd_msgs_;
-  
+  std::vector<std::shared_ptr<PointIL>> box_near_pcd_msgs_;
 
 };
 
