@@ -26,6 +26,7 @@
 #include <yaml-cpp/yaml.h>
 
 #include "opencv2/opencv.hpp"
+#include <numeric>
 
 using namespace std;
 
@@ -168,14 +169,11 @@ bool SwmLidar2cameraFusionComponent::Proc(const std::shared_ptr<PointCloud>& mes
   return true;
 }
 
-// auto start_time = std::chrono::system_clock::now();
-
 bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const drivers::PointCloud>& in_pcd_message,
                                                   const std::shared_ptr<PerceptionObstacles>& in_box_message,
                                                   const std::shared_ptr<PerceptionObstacles>& out_message){
   box_roi_pcd_msgs_.clear();
   box_near_pcd_msgs_.clear();
-  box_pcd_data = std::make_shared<PointCloud>();
   // pixel point(3x1): 선언
   Eigen::Matrix<double, 3, 1> projection_matrix_31d;
 
@@ -198,116 +196,195 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
 
   // 프레임에 있는 point 1개
   for (auto point : in_pcd_message->point()) {
+    // homo point Matrix(4x1): 선언
+    // Eigen::Matrix<double, 4, 1>  bp_projection_41d = Eigen::Matrix<double, 4, 1> ::Identity();
+    Eigen::Matrix<double, 4, 1>  bp_projection_41d;
 
-    if (point.y() < 50) {
+    // homo point Matrix(4x1): 초기화
+    // Eigen 초기화: <<(o), =(X)
+    bp_projection_41d << point.x(), point.y(), point.z(), 1;
 
-      // homo point Matrix(4x1): 선언
-      // Eigen::Matrix<double, 4, 1>  bp_projection_41d = Eigen::Matrix<double, 4, 1> ::Identity();
-      Eigen::Matrix<double, 4, 1>  bp_projection_41d;
+    // resultMatrix_map_[camera_name] = resultMatrix;
+    projection_matrix_31d = resultMatrix_map_[camera_names_[0]] * bp_projection_41d ;
 
-      // homo point Matrix(4x1): 초기화
-      // Eigen 초기화: <<(o), =(X)
-      bp_projection_41d << point.x(), point.y(), point.z(), 1;
+    unsigned int box_id = 0;
 
-      // resultMatrix_map_[camera_name] = resultMatrix;
-      projection_matrix_31d = resultMatrix_map_[camera_names_[0]] * bp_projection_41d ;
+    //// visualize
+    std::vector<cv::Scalar> colors = {
+      cv::Scalar(0, 0, 255), 
+      cv::Scalar(0, 255, 0),
+      cv::Scalar(255, 0, 0),
+      cv::Scalar(255,255,0),
+      cv::Scalar(255,0,255)
+      };
+    ////
+    
+    // 박스안에 있는 point 1개
+    for(auto& box : in_box_message->perception_obstacle()){
 
-      unsigned int box_id = 0;
+      auto nomal_x = std::round( projection_matrix_31d(0)/std::abs(projection_matrix_31d(2)) );
+      auto nomal_y = std::round( projection_matrix_31d(1)/std::abs(projection_matrix_31d(2)) );
 
-      //// visualize
-      std::vector<cv::Scalar> colors = {
-        cv::Scalar(0, 0, 255), 
-        cv::Scalar(0, 255, 0),
-        cv::Scalar(255, 0, 0),
-        cv::Scalar(255,255,0),
-        cv::Scalar(255,0,255)
-        };
-      ////
-      
-      // 박스안에 있는 point 1개
-      for(auto& box : in_box_message->perception_obstacle()){
+      if( ((box.bbox2d().xmin() <= nomal_x) && ( nomal_x <= box.bbox2d().xmax())) && ((box.bbox2d().ymin() <= nomal_y) && ( nomal_y <= box.bbox2d().ymax())) ){
 
-        auto nomal_x = std::round( projection_matrix_31d(0)/std::abs(projection_matrix_31d(2)) );
-        auto nomal_y = std::round( projection_matrix_31d(1)/std::abs(projection_matrix_31d(2)) );
-
-        if( ((box.bbox2d().xmin() <= nomal_x) && ( nomal_x <= box.bbox2d().xmax())) && ((box.bbox2d().ymin() <= nomal_y) && ( nomal_y <= box.bbox2d().ymax())) ){
-
-          //// visualize
-          cv::Scalar color;
-          if (box_id < colors.size()) {
-              color = colors[box_id];
-          } else {
-              color = cv::Scalar(255, 255, 255);  // White color for extra boxes
-          }
-
-          cv::circle(img, cv::Point(nomal_x, nomal_y), 5, color, -1);
-          ////
-
-          // auto box_roi_pcd_msg_ = std::make_shared<PointIL>;
-          std::shared_ptr<PointIL> box_roi_pcd_msg_ = std::make_shared<PointIL>();
-
-          box_roi_pcd_msg_-> x = point.x();
-          box_roi_pcd_msg_-> y = point.y();
-          box_roi_pcd_msg_-> z = point.z();
-          box_roi_pcd_msg_-> id = box_id;
-          box_roi_pcd_msg_-> distance = std::sqrt(point.x()*point.x() + point.y()*point.y() + point.z()*point.z());
-          box_roi_pcd_msg_-> label = static_cast<base::ObjectType>(box.type());
-          box_roi_pcd_msg_-> sub_label = static_cast<base::ObjectSubType>(box.sub_type());
-
-          // {x, y, z, id, label, sub_label}
-          box_roi_pcd_msgs_.push_back(std::move(box_roi_pcd_msg_));
-
-
-          break;
+        //// visualize
+        cv::Scalar color;
+        if (box_id < colors.size()) {
+            color = colors[box_id];
+        } else {
+            color = cv::Scalar(255, 255, 255);  // White color for extra boxes
         }
-        box_id++;
+
+        cv::circle(img, cv::Point(nomal_x, nomal_y), 5, color, -1);
+        ////
+
+        // auto box_roi_pcd_msg_ = std::make_shared<PointIL>;
+        std::shared_ptr<PointIL> box_roi_pcd_msg_ = std::make_shared<PointIL>();
+
+        box_roi_pcd_msg_-> x = point.x();
+        box_roi_pcd_msg_-> y = point.y();
+        box_roi_pcd_msg_-> z = point.z();
+        box_roi_pcd_msg_-> id = box_id;
+        box_roi_pcd_msg_-> distance = std::sqrt(point.x()*point.x() + point.y()*point.y() + point.z()*point.z());
+        box_roi_pcd_msg_-> label = static_cast<base::ObjectType>(box.type());
+        box_roi_pcd_msg_-> sub_label = static_cast<base::ObjectSubType>(box.sub_type());
+
+        // {x, y, z, id, label, sub_label}
+        box_roi_pcd_msgs_.push_back(std::move(box_roi_pcd_msg_));
+        break;
       }
-    };
+      box_id++;
+    }
   }
+
   std::vector<std::shared_ptr<PointIL>> box_msgs;
 
-  for  (int i =0 ; i < in_box_message->perception_obstacle_size();i++){
-    float near_point = 100.0;
-    std::shared_ptr<PointIL> box_near_pcd_msg_ = std::make_shared<PointIL>();
+  // ①
+  // for (int i =0 ; i < in_box_message->perception_obstacle_size();i++){
+  //   float near_point = 100.0;
+  //   float far_point = 0.0;
+  //   std::shared_ptr<PointIL> box_near_pcd_msg_ = std::make_shared<PointIL>();
+  //   std::shared_ptr<PointIL> box_far_pcd_msg_ = std::make_shared<PointIL>();
+  //   std::shared_ptr<PointIL> box_middle_pcd_msg_ = std::make_shared<PointIL>(); 
 
-    for (const auto& box_ : box_roi_pcd_msgs_ ){
-      if (box_->id == i){
-        if(box_->distance < near_point){
-          near_point = box_->distance ;
-          box_near_pcd_msg_-> x = box_->x;
-          box_near_pcd_msg_-> y = box_->y;
-          box_near_pcd_msg_-> z = box_->z;
-          box_near_pcd_msg_-> distance = box_->distance;
-          box_near_pcd_msg_-> id = box_->id;
-          box_near_pcd_msg_-> label = box_->label;
-          box_near_pcd_msg_-> sub_label = box_->sub_label;
+  //   for (const auto& box_ : box_roi_pcd_msgs_ ){
+  //     if (box_->id == i){
+  //       if(box_->distance < near_point){
+  //         near_point = box_->distance ;
+  //         box_near_pcd_msg_-> x = box_->x;
+  //         box_near_pcd_msg_-> y = box_->y;
+  //         box_near_pcd_msg_-> z = box_->z;
+  //         box_near_pcd_msg_-> distance = box_->distance;
+  //         box_near_pcd_msg_-> id = box_->id;
+  //         box_near_pcd_msg_-> label = box_->label;
+  //         box_near_pcd_msg_-> sub_label = box_->sub_label;
+  //       }
+
+  //       if (box_->distance > far_point) {
+  //       far_point = box_->distance;
+  //       box_far_pcd_msg_->x = box_->x;
+  //       box_far_pcd_msg_->y = box_->y;
+  //       box_far_pcd_msg_->z = box_->z;
+  //       box_far_pcd_msg_->distance = box_->distance;
+  //       box_far_pcd_msg_->id = box_->id;
+  //       box_far_pcd_msg_->label = box_->label;
+  //       box_far_pcd_msg_->sub_label = box_->sub_label;
+  //       }
+  //     }
+  //   }
+
+  //   box_middle_pcd_msg_->x = (box_near_pcd_msg_->x + box_far_pcd_msg_->x) / 2;
+  //   box_middle_pcd_msg_->y = (box_near_pcd_msg_->y + box_far_pcd_msg_->y) / 2;
+  //   box_middle_pcd_msg_->z = (box_near_pcd_msg_->z + box_far_pcd_msg_->z) / 2;
+  //   box_middle_pcd_msg_->distance = (box_near_pcd_msg_->distance + box_far_pcd_msg_->distance) / 2;
+  //   box_middle_pcd_msg_->id = i;
+
+  //   // if (box_near_pcd_msg_->id == 0) {
+  //   std::cout << "Object " << i << std::endl;
+  //   std::cout << "Minimum Distance: " << box_near_pcd_msg_->distance << std::endl;
+  //   // std::cout << "y: " << box_near_pcd_msg_->y << std::endl;
+  //   std::cout << "Minimum Coordinates: (" << box_near_pcd_msg_->x << ", " << box_near_pcd_msg_->y << ", " << box_near_pcd_msg_->z << ")" << std::endl;
+
+  //   std::cout << "Maximum Distance: " << box_far_pcd_msg_->distance << std::endl;
+  //   std::cout << "Maximum Coordinates: (" << box_far_pcd_msg_->x << ", " << box_far_pcd_msg_->y << ", " << box_far_pcd_msg_->z << ")" << std::endl;
+  //   // }
+  //   // box_msgs.push_back(box_near_pcd_msg_);
+  //   // box_msgs.push_back(box_far_pcd_msg_);
+  //   box_msgs.push_back(box_middle_pcd_msg_); 
+  // }
+
+  // ②
+  int num_nearest_points = 15;
+
+  for (int i = 0; i < in_box_message->perception_obstacle_size(); i++) {
+
+    std::vector<float> near_points(num_nearest_points, 100.0);
+    std::vector<std::shared_ptr<PointIL>> box_near_pcd_msgs(num_nearest_points);
+
+    for (const auto& box_ : box_roi_pcd_msgs_) {
+        if (box_->id == i) {
+
+            for (int j = 0; j < num_nearest_points; j++) {
+                if (box_->distance < near_points[j]) {
+                    for (int k = num_nearest_points - 1; k > j; k--) {
+                        near_points[k] = near_points[k - 1];
+                        box_near_pcd_msgs[k] = box_near_pcd_msgs[k - 1];
+                    }
+                    near_points[j] = box_->distance;
+                    box_near_pcd_msgs[j] = std::make_shared<PointIL>(*box_);
+                    break;
+                }
+            }
         }
-      }
     }
-    std::cout << "Object " << i << std::endl;
-    std::cout << "id: " << box_near_pcd_msg_->id << std::endl;
-    std::cout << "Minimum Distance: " << box_near_pcd_msg_->distance << std::endl;
-    std::cout << "Coordinates: (" << box_near_pcd_msg_->x << ", " << box_near_pcd_msg_->y << ", " << box_near_pcd_msg_->z << ")" << std::endl;
 
-    box_msgs.push_back(box_near_pcd_msg_);
+    float average_x = 0.0;
+    float average_y = 0.0;
+    float average_z = 0.0;
+
+    for (int j = 0; j < num_nearest_points; j++) {
+        // std::cout << "Object " << i << ", Closest Point " << j + 1 << std::endl;
+        // std::cout << "Minimum Distance: " << box_near_pcd_msgs[j]->distance << std::endl;
+        // std::cout << "Minimum Coordinates: (" << box_near_pcd_msgs[j]->x << ", "
+        //           << box_near_pcd_msgs[j]->y << ", " << box_near_pcd_msgs[j]->z << ")" << std::endl;
+
+        average_x += box_near_pcd_msgs[j]->x;
+        average_y += box_near_pcd_msgs[j]->y;
+        average_z += box_near_pcd_msgs[j]->z;
+    }
+
+    average_x /= num_nearest_points;
+    average_y /= num_nearest_points;
+    average_z /= num_nearest_points;
+
+    // std::cout << std::endl;
+    std::cout << "Object " << i << endl;
+    std::cout << "Average Coordinates: (" << average_x << ", " << average_y << ", " << average_z << ")"
+              << std::endl;
+    std::cout << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
+
+    box_msgs.push_back(std::make_shared<PointIL>(PointIL{average_x, average_y, average_z}));
   }
 
+  /////////////////////////////////////////////////
   Eigen::Matrix<double, 4, 1> box_min_distance_41d;
   Eigen::Matrix<double, 3, 1> pixel_coordinate_31d;
 
-  // Print the minimum distance for each box ID
+  // // Print the minimum distance for each box ID
   for (const auto& box_msg : box_msgs) {
-      box_min_distance_41d(0) = box_msg->x; 
-      box_min_distance_41d(1) = box_msg->y; 
-      box_min_distance_41d(2) = box_msg->z; 
-      box_min_distance_41d(3) = 1.0;       
+      // if (box_msg->id == 0) {
+        box_min_distance_41d(0) = box_msg->x;
+        box_min_distance_41d(1) = box_msg->y;
+        box_min_distance_41d(2) = box_msg->z;
+        box_min_distance_41d(3) = 1.0;
 
-      pixel_coordinate_31d = resultMatrix_map_[camera_names_[0]] * box_min_distance_41d ;
+        pixel_coordinate_31d = resultMatrix_map_[camera_names_[0]] * box_min_distance_41d ;
 
-      auto x_coord = std::round( pixel_coordinate_31d(0)/std::abs(pixel_coordinate_31d(2)) );
-      auto y_coord = std::round( pixel_coordinate_31d(1)/std::abs(pixel_coordinate_31d(2)) );
+        auto x_coord = std::round( pixel_coordinate_31d(0)/std::abs(pixel_coordinate_31d(2)) );
+        auto y_coord = std::round( pixel_coordinate_31d(1)/std::abs(pixel_coordinate_31d(2)) );
 
-      cv::circle(img, cv::Point(x_coord, y_coord), 5, cv::Scalar(0, 255, 255), 20);
+        cv::circle(img, cv::Point(x_coord, y_coord), 5, cv::Scalar(0, 255, 255), 20);
+      // }
   }
 
   //// visualize

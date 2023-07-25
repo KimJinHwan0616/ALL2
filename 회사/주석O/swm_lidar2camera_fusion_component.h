@@ -60,8 +60,6 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<apollo::d
   bool InternalProc(const std::shared_ptr<const drivers::PointCloud>& in_pcd_message,
                     const std::shared_ptr<PerceptionObstacles>& in_box_message,
                     const std::shared_ptr<PerceptionObstacles>& out_message);
-
-  std::shared_ptr<PointCloud> box_pcd_data ;
   
  private:
   int test_cnt ;
@@ -78,8 +76,6 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<apollo::d
   double box_width;
   double offset_top, offset_bottom;
   double offset_front, offset_width;
-
-  apollo::cyber::_PointXYZIT* dataPtr;
 
   // writer_ → Writer(PerceptionObstacles)
   // box_reader_ → Reader(PerceptionObstacles)
@@ -114,7 +110,6 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<apollo::d
     base::ObjectType label = base::ObjectType::UNKNOWN;
     base::ObjectSubType sub_label = base::ObjectSubType::UNKNOWN;
   };
-  // std::shared_ptr<PointIL> box_roi_pcd_msg_;
 
   // box_roi_pcd_msgs_ → {x,y,z,id,label,sub_label}
   std::vector<std::shared_ptr<PointIL>> box_roi_pcd_msgs_;
