@@ -115,6 +115,11 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<apollo::d
   std::vector<std::shared_ptr<PointIL>> box_roi_pcd_msgs_;
   std::vector<std::shared_ptr<PointIL>> box_near_pcd_msgs_;
 
+  // std::vector<std::shared_ptr<PointIL>> box_msgs;
+
+  // { box_id:포인트 개수, ..., box_id:포인트 개수 }
+  std::unordered_map<unsigned int, unsigned int> points_per_box;
+
 };
 
 CYBER_REGISTER_COMPONENT(SwmLidar2cameraFusionComponent);

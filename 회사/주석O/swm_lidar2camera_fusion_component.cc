@@ -174,6 +174,7 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
                                                   const std::shared_ptr<PerceptionObstacles>& out_message){
   box_roi_pcd_msgs_.clear();
   box_near_pcd_msgs_.clear();
+
   // pixel point(3x1): 선언
   Eigen::Matrix<double, 3, 1> projection_matrix_31d;
 
@@ -245,78 +246,49 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
         box_roi_pcd_msg_-> y = point.y();
         box_roi_pcd_msg_-> z = point.z();
         box_roi_pcd_msg_-> id = box_id;
+
+
         box_roi_pcd_msg_-> distance = std::sqrt(point.x()*point.x() + point.y()*point.y() + point.z()*point.z());
         box_roi_pcd_msg_-> label = static_cast<base::ObjectType>(box.type());
         box_roi_pcd_msg_-> sub_label = static_cast<base::ObjectSubType>(box.sub_type());
 
         // {x, y, z, id, label, sub_label}
         box_roi_pcd_msgs_.push_back(std::move(box_roi_pcd_msg_));
+
+
         break;
       }
+
       box_id++;
     }
   }
-
   std::vector<std::shared_ptr<PointIL>> box_msgs;
 
-  // ①
-  // for (int i =0 ; i < in_box_message->perception_obstacle_size();i++){
-  //   float near_point = 100.0;
-  //   float far_point = 0.0;
-  //   std::shared_ptr<PointIL> box_near_pcd_msg_ = std::make_shared<PointIL>();
-  //   std::shared_ptr<PointIL> box_far_pcd_msg_ = std::make_shared<PointIL>();
-  //   std::shared_ptr<PointIL> box_middle_pcd_msg_ = std::make_shared<PointIL>(); 
+  // 기능1: 박스의 포인트 개수가 일정 임계값(num_threshold_points) 이하인 경우 해당 박스를 건너뜁니다.
+  // 프레임별로 맵을 초기화
+  points_per_box.clear();
+  // std::unordered_map<unsigned int, unsigned int> points_per_box;
 
-  //   for (const auto& box_ : box_roi_pcd_msgs_ ){
-  //     if (box_->id == i){
-  //       if(box_->distance < near_point){
-  //         near_point = box_->distance ;
-  //         box_near_pcd_msg_-> x = box_->x;
-  //         box_near_pcd_msg_-> y = box_->y;
-  //         box_near_pcd_msg_-> z = box_->z;
-  //         box_near_pcd_msg_-> distance = box_->distance;
-  //         box_near_pcd_msg_-> id = box_->id;
-  //         box_near_pcd_msg_-> label = box_->label;
-  //         box_near_pcd_msg_-> sub_label = box_->sub_label;
-  //       }
+  // box_roi_pcd_msgs_ 벡터를 순회하며 각 박스당 찍힌 포인트의 개수를 계산
+  for (const auto& box_ : box_roi_pcd_msgs_) {
 
-  //       if (box_->distance > far_point) {
-  //       far_point = box_->distance;
-  //       box_far_pcd_msg_->x = box_->x;
-  //       box_far_pcd_msg_->y = box_->y;
-  //       box_far_pcd_msg_->z = box_->z;
-  //       box_far_pcd_msg_->distance = box_->distance;
-  //       box_far_pcd_msg_->id = box_->id;
-  //       box_far_pcd_msg_->label = box_->label;
-  //       box_far_pcd_msg_->sub_label = box_->sub_label;
-  //       }
-  //     }
-  //   }
+      // 맵에 해당 박스의 ID가 이미 존재하면 개수를 증가시키고, 존재하지 않으면 새로 추가
+      if (points_per_box.count(box_->id) > 0) {
+          points_per_box[box_->id]++;
+      } else {
+          points_per_box[box_->id] = 1;
+      }
+  }
 
-  //   box_middle_pcd_msg_->x = (box_near_pcd_msg_->x + box_far_pcd_msg_->x) / 2;
-  //   box_middle_pcd_msg_->y = (box_near_pcd_msg_->y + box_far_pcd_msg_->y) / 2;
-  //   box_middle_pcd_msg_->z = (box_near_pcd_msg_->z + box_far_pcd_msg_->z) / 2;
-  //   box_middle_pcd_msg_->distance = (box_near_pcd_msg_->distance + box_far_pcd_msg_->distance) / 2;
-  //   box_middle_pcd_msg_->id = i;
-
-  //   // if (box_near_pcd_msg_->id == 0) {
-  //   std::cout << "Object " << i << std::endl;
-  //   std::cout << "Minimum Distance: " << box_near_pcd_msg_->distance << std::endl;
-  //   // std::cout << "y: " << box_near_pcd_msg_->y << std::endl;
-  //   std::cout << "Minimum Coordinates: (" << box_near_pcd_msg_->x << ", " << box_near_pcd_msg_->y << ", " << box_near_pcd_msg_->z << ")" << std::endl;
-
-  //   std::cout << "Maximum Distance: " << box_far_pcd_msg_->distance << std::endl;
-  //   std::cout << "Maximum Coordinates: (" << box_far_pcd_msg_->x << ", " << box_far_pcd_msg_->y << ", " << box_far_pcd_msg_->z << ")" << std::endl;
-  //   // }
-  //   // box_msgs.push_back(box_near_pcd_msg_);
-  //   // box_msgs.push_back(box_far_pcd_msg_);
-  //   box_msgs.push_back(box_middle_pcd_msg_); 
-  // }
-
-  // ②
+  // threshold
+  unsigned int num_threshold_points = 30; // 이 임계값은 필요에 따라 조정 가능합니다.
   int num_nearest_points = 15;
 
   for (int i = 0; i < in_box_message->perception_obstacle_size(); i++) {
+    // 박스의 포인트 개수가 일정 임계값(num_threshold_points) 이하인 경우 해당 박스를 건너뜁니다.
+    if (points_per_box[i] <= num_threshold_points) {
+        continue;
+    }
 
     std::vector<float> near_points(num_nearest_points, 100.0);
     std::vector<std::shared_ptr<PointIL>> box_near_pcd_msgs(num_nearest_points);
@@ -343,6 +315,7 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
     float average_z = 0.0;
 
     for (int j = 0; j < num_nearest_points; j++) {
+        //// test
         // std::cout << "Object " << i << ", Closest Point " << j + 1 << std::endl;
         // std::cout << "Minimum Distance: " << box_near_pcd_msgs[j]->distance << std::endl;
         // std::cout << "Minimum Coordinates: (" << box_near_pcd_msgs[j]->x << ", "
@@ -357,11 +330,11 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
     average_y /= num_nearest_points;
     average_z /= num_nearest_points;
 
-    // std::cout << std::endl;
-    std::cout << "Object " << i << endl;
-    std::cout << "Average Coordinates: (" << average_x << ", " << average_y << ", " << average_z << ")"
-              << std::endl;
-    std::cout << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
+    //// test
+    // std::cout << "Object " << i << endl;
+    // std::cout << "Average Coordinates: (" << average_x << ", " << average_y << ", " << average_z << ")"
+    //           << std::endl;
+    // std::cout << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
 
     box_msgs.push_back(std::make_shared<PointIL>(PointIL{average_x, average_y, average_z}));
   }
