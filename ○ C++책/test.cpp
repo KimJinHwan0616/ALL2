@@ -1,14 +1,25 @@
 #include <iostream>
 
-// 인수가 있고 반환값이 있는 함수
-int multiplyNumbers(int x, int y) {
-    return x * y;
-}
+// 조건에 따라 코드를 활성화/비활성화하는 매크로
+#define ENABLE_FEATURE_A  // Feature A를 활성화하려면 주석 해제
+//#define ENABLE_FEATURE_B  // Feature B를 활성화하려면 주석 해제
 
 int main() {
-    int num1 = 4;
-    int num2 = 6;
-    int result = multiplyNumbers(num1, num2); // 함수 호출
-    std::cout << "Result: " << result << std::endl;
-    return num1;
+#ifdef ENABLE_FEATURE_A
+    std::cout << "Feature A is enabled." << std::endl;
+#endif
+
+#ifdef ENABLE_FEATURE_B
+    std::cout << "Feature B is enabled." << std::endl;
+#endif
+
+#ifndef ENABLE_FEATURE_A
+    std::cout << "Feature A is disabled." << std::endl;
+#endif
+
+#ifndef ENABLE_FEATURE_B
+    std::cout << "Feature B is disabled." << std::endl;
+#endif
+
+    return 0;
 }
