@@ -25,8 +25,9 @@
 #include <boost/algorithm/string.hpp>
 #include <yaml-cpp/yaml.h>
 
-#include "opencv2/opencv.hpp"
 #include <numeric>
+
+#define VISUALIZATION
 
 using namespace std;
 
@@ -121,6 +122,40 @@ static bool LoadExtrinsics(const std::string &yaml_file,
   return true;
 }
 
+// Helper function to convert ObjectSubType enum to string
+std::string ObjectSubTypeToString(base::ObjectSubType subtype) {
+    switch (subtype) {
+        case base::ObjectSubType::UNKNOWN:
+            return "UNKNOWN";
+        case base::ObjectSubType::UNKNOWN_MOVABLE:
+            return "UNKNOWN_MOVABLE";
+        case base::ObjectSubType::UNKNOWN_UNMOVABLE:
+            return "UNKNOWN_UNMOVABLE";
+        case base::ObjectSubType::CAR:
+            return "CAR";
+        case base::ObjectSubType::VAN:
+            return "VAN";
+        case base::ObjectSubType::TRUCK:
+            return "TRUCK";
+        case base::ObjectSubType::BUS:
+            return "BUS";
+        case base::ObjectSubType::CYCLIST:
+            return "CYCLIST";
+        case base::ObjectSubType::MOTORCYCLIST:
+            return "MOTORCYCLIST";
+        case base::ObjectSubType::TRICYCLIST:
+            return "TRICYCLIST";
+        case base::ObjectSubType::PEDESTRIAN:
+            return "PEDESTRIAN";
+        case base::ObjectSubType::TRAFFICCONE:
+            return "TRAFFICCONE";
+        case base::ObjectSubType::MAX_OBJECT_TYPE:
+            return "MAX_OBJECT_TYPE";
+        default:
+            return "UNKNOWN"; 
+    }
+}
+
 bool SwmLidar2cameraFusionComponent::Init() {
   SwmLidar2cameraFusionComponentConfig comp_config;
   if (!GetProtoConfig(&comp_config)) {
@@ -181,17 +216,12 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
   // box_width = 1.87;
   // offset_top = 5;
   // offset_bottom = 0.1;
-  offset_front = 3.5 + 2.5; // 
+  // offset_front = 3.5 + 2.5;
 
-  std::string time = std::to_string(Time::Now().ToNanosecond());
-
-  //// visualize
-  // cv::Mat img(1080, 1920, CV_8UC3, cv::Scalar(255, 255, 255));
-  cv::Mat img = cv::imread("/apollo/data/input_img/1.jpg");
-
-  if (img.empty()) {
-    std::cout << "img load fail";
-  }
+  #ifdef VISUALIZATION
+  cv::Mat img(1080, 1920, CV_8UC3, cv::Scalar(255, 255, 255));
+  // cv::Mat img = cv::imread("/apollo/data/input_img/1.jpg");
+  #endif
 
   AERROR << "Frame........";
 
@@ -209,18 +239,7 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
     projection_matrix_31d = resultMatrix_map_[camera_names_[0]] * bp_projection_41d ;
 
     unsigned int box_id = 0;
-
-    //// visualize
-    std::vector<cv::Scalar> colors = {
-      cv::Scalar(0, 0, 255), 
-      cv::Scalar(0, 255, 0),
-      cv::Scalar(255, 0, 0),
-      cv::Scalar(255,255,0),
-      cv::Scalar(255,0,255)
-      };
-    ////
     
-    // 박스안에 있는 point 1개
     for(auto& box : in_box_message->perception_obstacle()){
 
       auto nomal_x = std::round( projection_matrix_31d(0)/std::abs(projection_matrix_31d(2)) );
@@ -228,51 +247,52 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
 
       if( ((box.bbox2d().xmin() <= nomal_x) && ( nomal_x <= box.bbox2d().xmax())) && ((box.bbox2d().ymin() <= nomal_y) && ( nomal_y <= box.bbox2d().ymax())) ){
 
-        //// visualize
+        // visualization ///////////////////////////////////////////////
+        #ifdef VISUALIZATION
         cv::Scalar color;
         if (box_id < colors.size()) {
             color = colors[box_id];
         } else {
-            color = cv::Scalar(255, 255, 255);  // White color for extra boxes
+            color = cv::Scalar(100, 100, 100);  
         }
+        // box
+        cv::rectangle(img, cv::Point(box.bbox2d().xmin(), box.bbox2d().ymin()),
+                      cv::Point(box.bbox2d().xmax(), box.bbox2d().ymax()), color, 2);
+        // point
+        cv::circle(img, cv::Point(nomal_x, nomal_y), 2, color, -1);
+        #endif
+        // ///////////////////////////////////////////////
 
-        cv::circle(img, cv::Point(nomal_x, nomal_y), 5, color, -1);
-        ////
-
-        // auto box_roi_pcd_msg_ = std::make_shared<PointIL>;
         std::shared_ptr<PointIL> box_roi_pcd_msg_ = std::make_shared<PointIL>();
 
         box_roi_pcd_msg_-> x = point.x();
         box_roi_pcd_msg_-> y = point.y();
         box_roi_pcd_msg_-> z = point.z();
         box_roi_pcd_msg_-> id = box_id;
-
-
         box_roi_pcd_msg_-> distance = std::sqrt(point.x()*point.x() + point.y()*point.y() + point.z()*point.z());
         box_roi_pcd_msg_-> label = static_cast<base::ObjectType>(box.type());
         box_roi_pcd_msg_-> sub_label = static_cast<base::ObjectSubType>(box.sub_type());
 
+        // test
+        // std::cout << "sub_label: " << static_cast<int>(box_roi_pcd_msg_->sub_label) << std::endl;
+
         // {x, y, z, id, label, sub_label}
         box_roi_pcd_msgs_.push_back(std::move(box_roi_pcd_msg_));
-
-
         break;
       }
 
       box_id++;
     }
   }
+
+
   std::vector<std::shared_ptr<PointIL>> box_msgs;
-
-  // 기능1: 박스의 포인트 개수가 일정 임계값(num_threshold_points) 이하인 경우 해당 박스를 건너뜁니다.
-  // 프레임별로 맵을 초기화
+  unsigned int num_points_threshold = 20;   // num points threshold
+  int num_nearest_points = 20;    // nearest points
   points_per_box.clear();
-  // std::unordered_map<unsigned int, unsigned int> points_per_box;
 
-  // box_roi_pcd_msgs_ 벡터를 순회하며 각 박스당 찍힌 포인트의 개수를 계산
+  // Statement(num points)
   for (const auto& box_ : box_roi_pcd_msgs_) {
-
-      // 맵에 해당 박스의 ID가 이미 존재하면 개수를 증가시키고, 존재하지 않으면 새로 추가
       if (points_per_box.count(box_->id) > 0) {
           points_per_box[box_->id]++;
       } else {
@@ -280,19 +300,17 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
       }
   }
 
-  // threshold
-  unsigned int num_threshold_points = 30; // 이 임계값은 필요에 따라 조정 가능합니다.
-  int num_nearest_points = 15;
-
   for (int i = 0; i < in_box_message->perception_obstacle_size(); i++) {
-    // 박스의 포인트 개수가 일정 임계값(num_threshold_points) 이하인 경우 해당 박스를 건너뜁니다.
-    if (points_per_box[i] <= num_threshold_points) {
+    
+    // Statement(num points threshold)
+    if (points_per_box[i] <= num_points_threshold) {
         continue;
     }
 
     std::vector<float> near_points(num_nearest_points, 100.0);
     std::vector<std::shared_ptr<PointIL>> box_near_pcd_msgs(num_nearest_points);
 
+    // Statement(nearest points)
     for (const auto& box_ : box_roi_pcd_msgs_) {
         if (box_->id == i) {
 
@@ -331,19 +349,18 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
     average_z /= num_nearest_points;
 
     //// test
-    // std::cout << "Object " << i << endl;
-    // std::cout << "Average Coordinates: (" << average_x << ", " << average_y << ", " << average_z << ")"
-    //           << std::endl;
-    // std::cout << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
+    std::cout << "Object " << i << endl;
+    std::cout << "Average Coordinates: (" << average_x << ", " << average_y << ", " << average_z << ")"
+              << std::endl;
+    std::cout << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" << std::endl;
 
     box_msgs.push_back(std::make_shared<PointIL>(PointIL{average_x, average_y, average_z}));
   }
 
-  /////////////////////////////////////////////////
+  #ifdef VISUALIZATION
   Eigen::Matrix<double, 4, 1> box_min_distance_41d;
   Eigen::Matrix<double, 3, 1> pixel_coordinate_31d;
 
-  // // Print the minimum distance for each box ID
   for (const auto& box_msg : box_msgs) {
       // if (box_msg->id == 0) {
         box_min_distance_41d(0) = box_msg->x;
@@ -356,19 +373,30 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
         auto x_coord = std::round( pixel_coordinate_31d(0)/std::abs(pixel_coordinate_31d(2)) );
         auto y_coord = std::round( pixel_coordinate_31d(1)/std::abs(pixel_coordinate_31d(2)) );
 
-        cv::circle(img, cv::Point(x_coord, y_coord), 5, cv::Scalar(0, 255, 255), 20);
+        //// visualization
+        // point
+        cv::circle(img, cv::Point(x_coord, y_coord), 5, cv::Scalar(0, 0, 0), 20);
+
+        // text
+        std::string text_sub_label = ObjectSubTypeToString(box_msg->sub_label);
+        std::string text_y_coord = std::to_string(box_msg->y);
+
+        cv::putText(img, text_sub_label, cv::Point(x_coord-65, y_coord-60), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 0), 2);
+        cv::putText(img, text_y_coord, cv::Point(x_coord-75, y_coord-30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 0), 2);
+        ////
       // }
   }
 
-  //// visualize
-  // std::string  file_time_path= "/apollo/data/output_img/"+img_time+".jpg";
+  // std::string img_time = std::to_string(Time::Now().ToNanosecond());
+  // std::string file_time_path= "/apollo/data/output_img/"+img_time+".jpg";
   // cv::imwrite(file_time_path, img);
 
   cv::namedWindow("Image", cv::WINDOW_NORMAL);
   cv::resizeWindow("Image", 1440, 810);
   cv::imshow("Image", img);
   cv::waitKey(10);
-  ////
+  #endif
+
   return true;
 }
 

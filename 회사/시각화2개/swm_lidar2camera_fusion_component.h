@@ -31,11 +31,14 @@
 #include "modules/drivers/proto/pointcloud.pb.h"
 #include "cyber/direct_shared_memory/direct_shared_memory.h"
 #include <map>
-
-#include "opencv2/opencv.hpp"
+#include "modules/perception/onboard/transform_wrapper/transform_wrapper.h"
 #include "modules/perception/base/object_types.h"
+#include "modules/common/util/eigen_defs.h"
+#include "modules/perception/lidar2camera/lib/interface/base_tracker.h"
+#include "modules/perception/lidar2camera/lib/interface/base_lidar2camera_obstacle_perception.h"
+#include "opencv2/opencv.hpp"
 
-#define VISUALIZATION
+// #define shm_bp 
 
 namespace apollo {
 namespace perception {
@@ -46,61 +49,96 @@ using namespace apollo::drivers;
 using apollo::cyber::Reader;
 using apollo::cyber::Writer;
 
-class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<apollo::drivers::PointCloud> {
+class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<drivers::PointCloud>  {
  public:
-  SwmLidar2cameraFusionComponent() = default;
+  SwmLidar2cameraFusionComponent()  = default;
   ~SwmLidar2cameraFusionComponent() = default;
   bool Init() override;
-
-  // message(shard_ptr) → PointCloud
-  bool Proc(const std::shared_ptr<apollo::drivers::PointCloud>& message) override;
+  bool Proc(const std::shared_ptr<drivers::PointCloud>& message) override;
 
  private:
   bool InitAlgorithmPlugin();
-
-  // message → PointCloud
-  // in_box_message, out_message → PerceptionObstacles
   bool InternalProc(const std::shared_ptr<const drivers::PointCloud>& in_pcd_message,
                     const std::shared_ptr<PerceptionObstacles>& in_box_message,
-                    const std::shared_ptr<PerceptionObstacles>& out_message);
+                    const std::shared_ptr<SensorFrameMessage>& out_message);
+
+  std::shared_ptr<PointCloud> box_pcd_data ;
+  std::shared_ptr<Writer<PointCloud>> box_bp_writer_;
+
+
+  TransformWrapper lidar2world_trans_;
+  float lidar_query_tf_offset_ = 20.0f;
+  std::string lidar2novatel_tf2_child_frame_id_;
+
+  int nearest_obstacle_id = 0;
+
+  std::shared_ptr<lidar2camera::Baselidar2cameraObstaclePerception> lidar2camera_perception_;
+
+  base::SensorInfo lidar_info_;
+  base::SensorInfo camera_info_;
+  bool viz_switch = false;
   
- private:
+  #ifdef shm_bp 
+  // shm start
+  std::thread process_thread_;
+  std::shared_ptr<DirectSharedMemory> shared_memory_;
+  // uint8_t* dataPtr;
+  size_t point_size = 332800; // 1frame pointSize
+  // SimplePoint aPoint; // TODO :: rename structure name
+  // size_t aPointSize = sizeof(SimplePoint);
+
+  size_t at128_lidar_num = 4;
+  size_t at128_independent_memory_offset = 83200;
+  std::deque<bool> at128_device_state = {true, true, true, true};
+  std::vector<std::deque<float>> at128_point_size_buff;
+  apollo::cyber::_PointXYZIT* dataPtr;
+  //RSBP
+  size_t rsbp_lidar_num = 4;
+  size_t rsbp_start_pointer_offset = 332800;
+  size_t rsbp_independent_memory_offset = 83200;
+  size_t rsbp_lidar_position = 0;
+
+  bool bpearl_device_state[4] = {true, true, true, true};
+  uint64_t lidar_timestamp_array[4] = {0, 0, 0, 0};
+  uint64_t prev_lidar_timestamp_array[4] = {0, 0, 0, 0};
+  size_t device_check_cnt[4] = {0, 0, 0, 0};
+
+
+  // Thread loop running flag
+  bool isRunning_;
+
+  void Stop() {
+      isRunning_ = false;
+      if (process_thread_.joinable()) {
+        process_thread_.join();
+      }
+    }
+  // shm end
+  #endif
+
   int test_cnt ;
   static std::mutex s_mutex_;
-  static uint32_t s_seq_num_;
+  static uint32_t seq_num_;
 
   std::string fusion_name_;
   std::string fusion_method_;
   std::string fusion_main_sensor_;
-
   bool object_in_roi_check_ = false;
   double radius_for_roi_object_check_ = 0;
 
-  double box_width;
-  double offset_top, offset_bottom;
-  double offset_front, offset_width;
-
-  // writer_ → Writer(PerceptionObstacles)
-  // box_reader_ → Reader(PerceptionObstacles)
-  std::shared_ptr<apollo::cyber::Writer<PerceptionObstacles>> writer_;
+  std::shared_ptr<apollo::cyber::Writer<SensorFrameMessage>> writer_;
+  std::shared_ptr<apollo::cyber::Reader<PointCloud>> rsbp_reader_;
   std::shared_ptr<apollo::cyber::Reader<PerceptionObstacles>> box_reader_;
 
-  std::string camera_name_;
-  std::string lidar_name_;
+  std::string camera_name_; 
+  std::string lidar_name_; 
 
-  // { 값, ..., 값 }
   std::vector<std::string> camera_names_; 
   std::vector<std::string> lidar_names_; 
 
-  // 사전: {string : Matrix4d, ..., string : Matrix4d }
-  // { camera_name:cam_extrinsic, ..., camera_name:cam_extrinsic }
-  std::map<std::string, Eigen::Matrix4d> extrinsic_map_;
-
-  // { camera_name:intrinsic, ..., camera_name:intrinsic }
-  std::map<std::string, Eigen::Matrix3f> intrinsic_map_;
-
-  // { camera_name:P, ..., camera_name:P }
-  std::map<std::string, Eigen::Matrix<double, 3, 4>> resultMatrix_map_;
+  EigenMap<std::string, Eigen::Matrix4d> extrinsic_map_;
+  EigenMap<std::string, Eigen::Matrix3f> intrinsic_map_;
+  EigenMap<std::string, Eigen::Matrix<double, 3, 4>> resultMatrix_map_;
 
   std::vector<float> box_centers; 
 
@@ -112,15 +150,15 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<apollo::d
     int id = -1;
     base::ObjectType label = base::ObjectType::UNKNOWN;
     base::ObjectSubType sub_label = base::ObjectSubType::UNKNOWN;
-  };
 
-  // box_roi_pcd_msgs_ → {x,y,z,id,label,sub_label}
+    float trans_x = 0;
+    float trans_y = 0;
+  };
+  // std::shared_ptr<PointIL> box_roi_pcd_msg_;
   std::vector<std::shared_ptr<PointIL>> box_roi_pcd_msgs_;
   std::vector<std::shared_ptr<PointIL>> box_near_pcd_msgs_;
 
-  // visualize
-  #ifdef VISUALIZATION
-  // { box_id:number of points, ..., box_id:number of points }
+  ////
   std::unordered_map<unsigned int, unsigned int> points_per_box;
 
   std::vector<cv::Scalar> colors = {
@@ -146,9 +184,10 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<apollo::d
   cv::Scalar(60, 190, 255), 
   cv::Scalar(137, 86, 215)
   };
-  #endif
+  ////  
 
 };
+
 
 CYBER_REGISTER_COMPONENT(SwmLidar2cameraFusionComponent);
 
