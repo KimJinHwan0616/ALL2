@@ -150,9 +150,6 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<drivers::
     int id = -1;
     base::ObjectType label = base::ObjectType::UNKNOWN;
     base::ObjectSubType sub_label = base::ObjectSubType::UNKNOWN;
-
-    float trans_x = 0;
-    float trans_y = 0;
   };
   // std::shared_ptr<PointIL> box_roi_pcd_msg_;
   std::vector<std::shared_ptr<PointIL>> box_roi_pcd_msgs_;
