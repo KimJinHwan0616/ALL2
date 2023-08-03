@@ -12,14 +12,6 @@ ROS(Robot Operating System): 로봇 소프트웨어 open source '프레임워크
 
 ㅁ .proto(PROTocol buffers): 직렬화(데이터 → 이진 데이터)
 
-############################################
-    <object detection>
-yolox_trt_obstacle_detector.h
-yolox_trt_obstacle_detector.cc
-
-    <lidar>
-detection_component.cc
-detection_component.h
 
 
 

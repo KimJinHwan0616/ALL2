@@ -26,5 +26,10 @@ cyber_visualizer   # 시각화
 cyber_recorder play -f 레코더 -l    # 시작
 cyber_recorder info 레코더    # 정보
 
+# 채널 정지
+cyber_recorder play -f 레코더 -k /apollo/perception/obstacles /apollo/prediction
+
+
 cyber_launch start 런치    # 소스 코드 실행
+
 

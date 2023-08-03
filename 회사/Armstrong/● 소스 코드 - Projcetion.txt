@@ -18,5 +18,12 @@ swm_lidar2camera_fusion_component.h
 
 ㅁ InternalProc(): 객체 순회 라이다 좌표 메세지 전달(처리 소스 코드) ★
 ㅁ Proc(): 입력 메세지 + 출력 메세지
+#######################################
+    <object detection>
+yolox_trt_obstacle_detector.h
+yolox_trt_obstacle_detector.cc
 
+    <lidar>
+detection_component.cc
+detection_component.h
 

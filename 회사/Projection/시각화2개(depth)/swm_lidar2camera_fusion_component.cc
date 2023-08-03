@@ -383,11 +383,6 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
             color = cv::Scalar(125, 125, 125);  
         }
         cv::circle(front_view_img, cv::Point(nomal_x, nomal_y), 10, color, -1);
-
-        //// box 수정중
-        cv::rectangle(front_view_img, cv::Point(box.bbox2d().xmin(), box.bbox2d().ymin()),
-                    cv::Point(box.bbox2d().xmax(), box.bbox2d().ymax()), color, 2);
-        ////
       }
 
       std::shared_ptr<PointIL> box_roi_pcd_msg_ = std::make_shared<PointIL>();
@@ -427,7 +422,6 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
 
     float near_point = 100.0;
     std::shared_ptr<PointIL> box_near_pcd_msg_ = std::make_shared<PointIL>();
-    // std::shared_ptr<PointIL> box_lwh_pcd_msg_ = std::make_shared<PointIL>();
 
     for (const auto& box_ : box_roi_pcd_msgs_ ){
       if (box_->id == i){
@@ -448,8 +442,6 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
 
     if (near_point == 100.0){continue;}
 
-    // std::cout << "Object " << i << endl;
-    //// 투영
     Eigen::Matrix<double, 4, 1> near_point_41d = Eigen::Matrix<double, 4, 1> ::Identity();
     Eigen::Matrix<double, 3, 1> near_proj_point_31d ;
 
@@ -471,9 +463,10 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
     Eigen::Matrix<double, 3, 1> img_box_min_31d(depth * box.bbox2d().xmin(), depth * box.bbox2d().ymin(), depth);
     Eigen::Matrix<double, 3, 1> img_box_max_31d(depth * box.bbox2d().xmax(), depth * box.bbox2d().ymax(), depth);
 
-    auto box_min_x = ( resultMatrix_33d.inverse() * (img_box_min_31d - resultMatrix_31d) )(0);
-    auto box_max_x = ( resultMatrix_33d.inverse() * (img_box_max_31d - resultMatrix_31d) )(0);
+    double box_min_x = ( resultMatrix_33d.inverse() * (img_box_min_31d - resultMatrix_31d) )(0);
+    double box_max_x = ( resultMatrix_33d.inverse() * (img_box_max_31d - resultMatrix_31d) )(0);
 
+    double width = (box_max_x - box_min_x)*0.5;
     // auto box_min_y = ( resultMatrix_33d.inverse() * (img_box_min_31d - resultMatrix_31d) )(1);
     // auto box_max_y = ( resultMatrix_33d.inverse() * (img_box_max_31d - resultMatrix_31d) )(1);
 
@@ -483,7 +476,7 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
     // std::cout << "max: (" << box_max_x << ", " << box_max_y << ")" << std::endl;
     // cout << endl;
 
-    box_w_map_[i] = std::make_pair(box_min_x, box_max_x);
+    box_w_map_[i] = width;
     ////
     
     if(viz_switch){
@@ -498,6 +491,10 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
 
       // point
       cv::circle(front_view_img, cv::Point(x_coord, y_coord), 5, cv::Scalar(0, 0, 0), 20);
+
+      // rectangle
+      cv::rectangle(front_view_img, cv::Point(box.bbox2d().xmin(), box.bbox2d().ymin()),
+                  cv::Point(box.bbox2d().xmax(), box.bbox2d().ymax()), cv::Scalar(0, 0, 0), 2);
 
       // text
       std::string front_text_sub_label = ObjectSubTypeToString(box_near_pcd_msg_->sub_label);
@@ -530,15 +527,6 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
 
       std::string top_text_y_coord = std::to_string(box_near_pcd_msg_->y);
       cv::putText(top_view_img, top_text_y_coord, cv::Point(trans_x-75, trans_y-30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 0), 2);
-
-      // rectangle
-      cv::rectangle(top_view_img, 
-        cv::Point( 0.5*top_view_width + (box_min_x)*top_view_width/x_range, top_view_height - (box_near_pcd_msg_-> y)*top_view_height/y_range),
-        cv::Point( 0.5*top_view_width + (box_max_x)*top_view_width/x_range, top_view_height - (box_near_pcd_msg_-> y + 1)*top_view_height/y_range),
-        cv::Scalar(0, 0, 0), 2);
-
-      std::string text_box_width = std::to_string(box_max_x - box_min_x);
-      cv::putText(top_view_img, text_box_width, cv::Point(trans_x-75, trans_y+30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(125, 125, 125), 2);
       ////
 
     }
@@ -559,28 +547,18 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
   for(auto& near_point_ : box_near_pcd_msgs_){
     base::ObjectPtr obj(new base::Object);
 
-    // float width = largest_diff_map[near_point_->id];
-
+    double width = box_w_map_[near_point_->id];
+    
     obj->polygon.resize(4);
     
-    obj->polygon[0].x = near_point_->x - 1;
+    obj->polygon[0].x = near_point_->x - width;
     obj->polygon[0].y = near_point_->y;
-    obj->polygon[1].x = near_point_->x - 1;
+    obj->polygon[1].x = near_point_->x - width;
     obj->polygon[1].y = near_point_->y + 1;
-    obj->polygon[2].x = near_point_->x + 1;
+    obj->polygon[2].x = near_point_->x + width;
     obj->polygon[2].y = near_point_->y + 1;
-    obj->polygon[3].x = near_point_->x + 1;
+    obj->polygon[3].x = near_point_->x + width;
     obj->polygon[3].y = near_point_->y;
-    
-    // obj->polygon[0].x = near_point_->x - width;
-    // obj->polygon[0].y = near_point_->y;
-    // obj->polygon[1].x = near_point_->x - width;
-    // obj->polygon[1].y = near_point_->y + 1;
-    // obj->polygon[2].x = near_point_->x + width;
-    // obj->polygon[2].y = near_point_->y + 1;
-    // obj->polygon[3].x = near_point_->x + width;
-    // obj->polygon[3].y = near_point_->y;
-
     obj->distance = near_point_->distance;
 
     obj->type = near_point_->label;
@@ -589,17 +567,17 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
 
     ////
     if(viz_switch){
-      // cv::rectangle(top_view_img, 
-      //   cv::Point( 0.5*top_view_width + (obj->polygon[0].x)*top_view_width/x_range, top_view_height - (obj->polygon[0].y)*top_view_height/y_range),
-      //   cv::Point( 0.5*top_view_width + (obj->polygon[2].x)*top_view_width/x_range, top_view_height - (obj->polygon[2].y)*top_view_height/y_range),
-      //   cv::Scalar(0, 0, 0), 2);
+      cv::rectangle(top_view_img, 
+        cv::Point( 0.5*top_view_width + (obj->polygon[0].x)*top_view_width/x_range, top_view_height - (obj->polygon[0].y)*top_view_height/y_range),
+        cv::Point( 0.5*top_view_width + (obj->polygon[2].x)*top_view_width/x_range, top_view_height - (obj->polygon[2].y)*top_view_height/y_range),
+        cv::Scalar(0, 0, 0), 2);
 
-      // std::string text_width = std::to_string(2*width);
+      std::string text_width = std::to_string(2*width);
 
-      // float trans_x = 0.5*top_view_width + (near_point_-> x)*top_view_width/x_range;
-      // float trans_y = top_view_height - (near_point_-> y)*top_view_height/y_range;
+      float trans_x = 0.5*top_view_width + (near_point_-> x)*top_view_width/x_range;
+      float trans_y = top_view_height - (near_point_-> y)*top_view_height/y_range;
 
-      // cv::putText(top_view_img, text_width, cv::Point(trans_x-75, trans_y+30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(125, 125, 125), 2);
+      cv::putText(top_view_img, text_width, cv::Point(trans_x-75, trans_y+30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(125, 125, 125), 2);
     }
     ////
 
@@ -640,10 +618,10 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
     // std::string front_file_path= "/apollo/data/output_front_view/"+img_time+".jpg";
     // cv::imwrite(front_file_path, front_view_img);
 
-    // cv::namedWindow("Front View", cv::WINDOW_NORMAL);
-    // cv::resizeWindow("Front View", 1000, 600);
-    // cv::imshow("Front View", front_view_img);
-    // cv::waitKey(10);
+    cv::namedWindow("Front View", cv::WINDOW_NORMAL);
+    cv::resizeWindow("Front View", 1000, 600);
+    cv::imshow("Front View", front_view_img);
+    cv::waitKey(10);
 
     // std::string top_file_path= "/apollo/data/output_top_view/"+img_time+".jpg";
     // cv::imwrite(top_file_path, top_view_img);
