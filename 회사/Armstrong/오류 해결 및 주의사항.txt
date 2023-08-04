@@ -2,5 +2,8 @@
 <CPU-VPU 설정값 연동>
 https://mail.google.com/mail/u/0/#inbox/FMfcgzGsnBhjfGMqdGmjLWrNccvtVVKl
 
+Armstrong/a50 -> vi .id -> IPC 입력
+
+
 ㅁ git pull 로 최신 버전을 받을 때 항상
 ./scripts/bootstrap.sh 을 통해 드림뷰에 차량셋팅을 해줘야하는구나

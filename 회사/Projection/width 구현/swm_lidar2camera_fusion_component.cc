@@ -90,36 +90,36 @@ static bool LoadExtrinsics(const std::string &yaml_file,
 }
 
 std::string ObjectSubTypeToString(base::ObjectSubType subtype) {
-    switch (subtype) {
-        case base::ObjectSubType::UNKNOWN:
-            return "UNKNOWN";
-        case base::ObjectSubType::UNKNOWN_MOVABLE:
-            return "UNKNOWN_MOVABLE";
-        case base::ObjectSubType::UNKNOWN_UNMOVABLE:
-            return "UNKNOWN_UNMOVABLE";
-        case base::ObjectSubType::CAR:
-            return "CAR";
-        case base::ObjectSubType::VAN:
-            return "VAN";
-        case base::ObjectSubType::TRUCK:
-            return "TRUCK";
-        case base::ObjectSubType::BUS:
-            return "BUS";
-        case base::ObjectSubType::CYCLIST:
-            return "CYCLIST";
-        case base::ObjectSubType::MOTORCYCLIST:
-            return "MOTORCYCLIST";
-        case base::ObjectSubType::TRICYCLIST:
-            return "TRICYCLIST";
-        case base::ObjectSubType::PEDESTRIAN:
-            return "PEDESTRIAN";
-        case base::ObjectSubType::TRAFFICCONE:
-            return "TRAFFICCONE";
-        case base::ObjectSubType::MAX_OBJECT_TYPE:
-            return "MAX_OBJECT_TYPE";
-        default:
-            return "UNKNOWN"; 
-    }
+  switch (subtype) {
+    case base::ObjectSubType::UNKNOWN:
+      return "UNKNOWN";
+    case base::ObjectSubType::UNKNOWN_MOVABLE:
+      return "UNKNOWN_MOVABLE";
+    case base::ObjectSubType::UNKNOWN_UNMOVABLE:
+      return "UNKNOWN_UNMOVABLE";
+    case base::ObjectSubType::CAR:
+      return "CAR";
+    case base::ObjectSubType::VAN:
+      return "VAN";
+    case base::ObjectSubType::TRUCK:
+      return "TRUCK";
+    case base::ObjectSubType::BUS:
+      return "BUS";
+    case base::ObjectSubType::CYCLIST:
+      return "CYCLIST";
+    case base::ObjectSubType::MOTORCYCLIST:
+      return "MOTORCYCLIST";
+    case base::ObjectSubType::TRICYCLIST:
+      return "TRICYCLIST";
+    case base::ObjectSubType::PEDESTRIAN:
+      return "PEDESTRIAN";
+    case base::ObjectSubType::TRAFFICCONE:
+      return "TRAFFICCONE";
+    case base::ObjectSubType::MAX_OBJECT_TYPE:
+      return "MAX_OBJECT_TYPE";
+    default:
+      return "UNKNOWN"; 
+  }
 }
 
 bool SwmLidar2cameraFusionComponent::Init() {
@@ -184,8 +184,9 @@ bool SwmLidar2cameraFusionComponent::Init() {
   // writer_ = node_->CreateWriter<SensorFrameMessage>(
   //     comp_config.output_obstacles_channel_name());
   writer_ = node_->CreateWriter<SensorFrameMessage>("/perception/inner/PrefusedObjects");
+  // writer_ = node_->CreateWriter<SensorFrameMessage>(comp_config.output_obstacles_channel_name());
 
-  box_bp_writer_ = node_->CreateWriter<PointCloud>("perception/test/box_in_bp_data");
+  // box_bp_writer_ = node_->CreateWriter<PointCloud>("perception/test/box_in_bp_data");
 
   return true;
 }
@@ -235,7 +236,7 @@ bool SwmLidar2cameraFusionComponent::Proc(const std::shared_ptr<drivers::PointCl
   //  in_box_message = box_reader_->GetLatestObserved();
   // }
   if (in_box_message == nullptr) {
-  return true;
+    return true;
   }
 
 
@@ -295,7 +296,7 @@ bool SwmLidar2cameraFusionComponent::Proc(const std::shared_ptr<drivers::PointCl
       in_rsbp_message->set_measurement_time((double)timestamp/1000000000);
       in_rsbp_message->mutable_header()->set_lidar_timestamp(timestamp);
 
-      box_bp_writer_->Write(in_rsbp_message);
+      // box_bp_writer_->Write(in_rsbp_message);
 
       AERROR << "in_rsbp_message->point_size() : " << size;
     // }
@@ -305,12 +306,18 @@ bool SwmLidar2cameraFusionComponent::Proc(const std::shared_ptr<drivers::PointCl
   // auto out_message = std::make_shared<PerceptionObstacles>();
   auto out_message = std::make_shared<SensorFrameMessage>();
   // if(!InternalProc(in_rsbp_message, message, out_message)){
-    if(!InternalProc(message, in_box_message, out_message)){
+  if(!InternalProc(message, in_box_message, out_message)){
     AERROR << "cam2lidar fusion fail." ;
     return false;
 
   }
+
   writer_->Write(out_message);
+  // bool send_sensorframe_ret = writer_->Write(out_message);
+  // if(!send_sensorframe_ret) {
+  //   AERROR << "send out prefused msg, ts: " << message->header().timestamp_sec()
+  //         << "ret: " << send_sensorframe_ret;
+  // }
   return true;
 }
 
@@ -330,10 +337,11 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
     while(lidar2world_trans_.GetSensor2worldTrans(lidar_query_tf_timestamp, &pose,
                                                &pose_novatel)){
       lidar_query_tf_timestamp + 0.01;
-                                               }
+    }
 
     return true;
   } 
+
   //tf
   // if(viz_switch){
     uint16_t top_view_width = 1000;
@@ -348,10 +356,12 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
     // cv::Scalar(0, 255, 0), cv::Scalar(255, 0, 0), cv::Scalar(255,255,0), cv::Scalar(255,0,255)};
   // }
 
-  AERROR << "Frame........";
+  // AERROR << "Frame........";
   
   box_roi_pcd_msgs_.clear();
   box_near_pcd_msgs_.clear();
+
+  box_w_map_.clear();
 
   box_pcd_data = std::make_shared<PointCloud>();
   Eigen::Matrix<double, 3, 1>  projection_matrix_31d ;
@@ -369,67 +379,61 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
       auto nomal_x = projection_matrix_31d(0)/std::abs(projection_matrix_31d(2));
       auto nomal_y = projection_matrix_31d(1)/std::abs(projection_matrix_31d(2));
 
-      if(((box.bbox2d().xmin() <= nomal_x) && ( nomal_x <= box.bbox2d().xmax())) && ((box.bbox2d().ymin() <= nomal_y) && ( nomal_y <= box.bbox2d().ymax()))){
+      if(((box.bbox2d().xmin() <= nomal_x) && ( nomal_x <= box.bbox2d().xmax())) 
+          && ((box.bbox2d().ymin() <= nomal_y) && ( nomal_y <= box.bbox2d().ymax()))){
       
-      // front view //
-      if(viz_switch){
-        cv::Scalar color;
-        if (box_id < (int)colors.size()) {
-            color = colors[box_id];
-        } else {
-            color = cv::Scalar(125, 125, 125);  
+        // front view //
+        if(viz_switch){
+          cv::Scalar color;
+          if (box_id < (int)colors.size()) {
+              color = colors[box_id];
+          } else {
+              color = cv::Scalar(125, 125, 125);  
+          }
+          cv::circle(front_view_img, cv::Point(nomal_x, nomal_y), 10, color, -1);
         }
-        cv::circle(front_view_img, cv::Point(nomal_x, nomal_y), 2, color, -1);
 
-        //// box 수정중
-        cv::rectangle(front_view_img, cv::Point(box.bbox2d().xmin(), box.bbox2d().ymin()),
-                    cv::Point(box.bbox2d().xmax(), box.bbox2d().ymax()), color, 2);
+        std::shared_ptr<PointIL> box_roi_pcd_msg_ = std::make_shared<PointIL>();
+        box_roi_pcd_msg_-> x = point.x();
+        box_roi_pcd_msg_-> y = point.y();
+        box_roi_pcd_msg_-> z = point.z();
+        box_roi_pcd_msg_-> distance = std::sqrt(point.x()*point.x() + point.y()*point.y());
+        box_roi_pcd_msg_-> id = box_id;
+        box_roi_pcd_msg_-> label = static_cast<base::ObjectType>(box.type());
+        box_roi_pcd_msg_-> sub_label = static_cast<base::ObjectSubType>(box.sub_type());
+
         ////
-      }
-
-      std::shared_ptr<PointIL> box_roi_pcd_msg_ = std::make_shared<PointIL>();
-      box_roi_pcd_msg_-> x = point.x();
-      box_roi_pcd_msg_-> y = point.y();
-      box_roi_pcd_msg_-> z = point.z();
-      box_roi_pcd_msg_-> distance = std::sqrt(point.x()*point.x() + point.y()*point.y());
-      box_roi_pcd_msg_-> id = box_id;
-      box_roi_pcd_msg_-> label = static_cast<base::ObjectType>(box.type());
-      box_roi_pcd_msg_-> sub_label = static_cast<base::ObjectSubType>(box.sub_type());
-      ////
-      // top view //
-      if(viz_switch){
-        cv::Scalar color;
-        if (box_id < (int)colors.size()) {
+        // top view //
+        if(viz_switch){
+          cv::Scalar color;
+          if (box_id < (int)colors.size()) {
             color = colors[box_id];
-        } else {
+          } else {
             color = cv::Scalar(125, 125, 125);  // White color for extra boxes
+          }
+          
+          cv::circle(top_view_img, 
+              cv::Point(0.5*top_view_width + point.x()*top_view_width/x_range, top_view_height - point.y()*top_view_height/y_range), 
+              5, color, 2);
         }
-        
-        cv::circle(top_view_img, 
-          cv::Point(0.5*top_view_width + point.x()*top_view_width/x_range, top_view_height - point.y()*top_view_height/y_range), 
-          2, color, 2);
-      }
-      ////
-      box_roi_pcd_msgs_.push_back(std::move(box_roi_pcd_msg_));
+        ////
+        box_roi_pcd_msgs_.push_back(std::move(box_roi_pcd_msg_));
 
-      break;
+        break;
       }
       box_id++;
-     }
     }
+  }
 
-    for (int i =0 ; i < in_box_message->perception_obstacle_size();i++) {
+
+  for (int i =0 ; i < in_box_message->perception_obstacle_size();i++) {
 
     float near_point = 100.0;
     std::shared_ptr<PointIL> box_near_pcd_msg_ = std::make_shared<PointIL>();
-    // std::shared_ptr<PointIL> box_lwh_pcd_msg_ = std::make_shared<PointIL>();
-
     for (const auto& box_ : box_roi_pcd_msgs_ ){
       if (box_->id == i){
-
         if(box_->distance < near_point){
           near_point = box_->distance ;
-
           box_near_pcd_msg_-> x = box_->x;
           box_near_pcd_msg_-> y = box_->y;
           box_near_pcd_msg_-> z = box_->z;
@@ -440,25 +444,61 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
         }
       }
     }
-
-
-    // std::cout << "Object " << i << endl;
-    ////
-
     if (near_point == 100.0){continue;}
 
+    Eigen::Matrix<double, 4, 1> near_point_41d = Eigen::Matrix<double, 4, 1> ::Identity();
+    Eigen::Matrix<double, 3, 1> near_proj_point_31d ;
+
+    near_point_41d << box_near_pcd_msg_->x, box_near_pcd_msg_->y, box_near_pcd_msg_->z, 1;
+    near_proj_point_31d = resultMatrix_map_[camera_names_[0]] * near_point_41d ;
+
+    Eigen::Matrix<double, 3, 3> resultMatrix_33d = resultMatrix_map_[camera_names_[0]].block<3, 3>(0, 0);
+    Eigen::Matrix<double, 3, 1> resultMatrix_31d = resultMatrix_map_[camera_names_[0]].col(3);
+
+    auto depth = near_proj_point_31d(2);
+
+    const auto& box = in_box_message->perception_obstacle(i);
+    //test
+    // cout << "Object " << i << ", depth: " << depth << endl;
+    // cout << "xmin = " << box.bbox2d().xmin()
+    //           << ", xmax = " << box.bbox2d().xmax() << endl;
+    // cout << "ymin = " << box.bbox2d().ymin() << ", ymax = " << box.bbox2d().ymax() << endl;
+
+    Eigen::Matrix<double, 3, 1> img_box_min_31d(depth * box.bbox2d().xmin(), depth * box.bbox2d().ymin(), depth);
+    Eigen::Matrix<double, 3, 1> img_box_max_31d(depth * box.bbox2d().xmax(), depth * box.bbox2d().ymax(), depth);
+
+    double box_min_x = ( resultMatrix_33d.inverse() * (img_box_min_31d - resultMatrix_31d) )(0);
+    double box_max_x = ( resultMatrix_33d.inverse() * (img_box_max_31d - resultMatrix_31d) )(0);
+
+    double width = (box_max_x - box_min_x)*0.5;
+    // auto box_min_y = ( resultMatrix_33d.inverse() * (img_box_min_31d - resultMatrix_31d) )(1);
+    // auto box_max_y = ( resultMatrix_33d.inverse() * (img_box_max_31d - resultMatrix_31d) )(1);
+
+    //test
+    // cout << "box" << endl;
+    // std::cout << "min: (" << box_min_x << ", " << box_min_y << ")" << std::endl;
+    // std::cout << "max: (" << box_max_x << ", " << box_max_y << ")" << std::endl;
+    // cout << endl;
+
+    box_w_map_.push_back(width);
+    ////
+    
     if(viz_switch){
       // front view //
       Eigen::Matrix<double, 4, 1> box_min_distance_41d = Eigen::Matrix<double, 4, 1> ::Identity();
-      Eigen::Matrix<double, 3, 1> pixel_coordinate_31d = Eigen::Matrix<double, 3, 1> ::Identity();
+      Eigen::Matrix<double, 3, 1> near_proj_point_31d = Eigen::Matrix<double, 3, 1> ::Identity();
 
       box_min_distance_41d << box_near_pcd_msg_-> x, box_near_pcd_msg_-> y, box_near_pcd_msg_-> z,1.0;
-      pixel_coordinate_31d = resultMatrix_map_[camera_names_[0]] * box_min_distance_41d ;
-      auto x_coord = std::round( pixel_coordinate_31d(0)/std::abs(pixel_coordinate_31d(2)) );
-      auto y_coord = std::round( pixel_coordinate_31d(1)/std::abs(pixel_coordinate_31d(2)) );
+      near_proj_point_31d = resultMatrix_map_[camera_names_[0]] * box_min_distance_41d ;
+      auto x_coord = std::round( near_proj_point_31d(0)/std::abs(near_proj_point_31d(2)) );
+      auto y_coord = std::round( near_proj_point_31d(1)/std::abs(near_proj_point_31d(2)) );
 
       // point
       cv::circle(front_view_img, cv::Point(x_coord, y_coord), 5, cv::Scalar(0, 0, 0), 20);
+
+      // rectangle
+      cv::rectangle(front_view_img, cv::Point(box.bbox2d().xmin(), box.bbox2d().ymin()),
+                  cv::Point(box.bbox2d().xmax(), box.bbox2d().ymax()), cv::Scalar(0, 0, 0), 2);
 
       // text
       std::string front_text_sub_label = ObjectSubTypeToString(box_near_pcd_msg_->sub_label);
@@ -487,11 +527,12 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
 
       // text
       std::string top_text_sub_label = ObjectSubTypeToString(box_near_pcd_msg_->sub_label);
-      std::string top_text_y_coord = std::to_string(box_near_pcd_msg_->y);
-
       cv::putText(top_view_img, top_text_sub_label, cv::Point(trans_x-65, trans_y-60), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 0), 2);
+
+      std::string top_text_y_coord = std::to_string(box_near_pcd_msg_->y);
       cv::putText(top_view_img, top_text_y_coord, cv::Point(trans_x-75, trans_y-30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 0), 2);
       ////
+
     }
 
     PointXYZIT* point_new = box_pcd_data->add_point();
@@ -502,57 +543,49 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
         point_new->set_timestamp(0);
 
     box_near_pcd_msgs_.push_back(std::move(box_near_pcd_msg_));
-
   }
 
-  ////
-
-  // Loop through each element in box_near_pcd_msgs_ and find the largest difference in x
-  for (const auto& box_near_msg : box_near_pcd_msgs_) {
-    float largest_difference = -std::numeric_limits<float>::infinity();
-
-    for (const auto& box_roi_msg : box_roi_pcd_msgs_) {
-        if (box_roi_msg->id == box_near_msg->id) {
-
-            float difference = std::abs(box_near_msg->x - box_roi_msg->x);
-            if (difference > largest_difference) {
-                largest_difference = difference;
-            }
-        }
-    }
-    ////test
-    cout << "Object " << box_near_msg->id << endl;
-    cout << "largest difference: " << largest_difference << endl;
-
-    largest_diff_map[box_near_msg->id] = largest_difference;
-  }
-
-  ////
-
-  box_bp_writer_->Write(box_pcd_data);
+  // box_bp_writer_->Write(box_pcd_data);
 
   base::FramePtr lidar2camera_frame(new base::Frame());
   for(auto& near_point_ : box_near_pcd_msgs_){
     base::ObjectPtr obj(new base::Object);
 
-    float width = largest_diff_map[near_point_->id];
-
-    obj->polygon.resize(4);
+    double width = box_w_map_[near_point_->id];
     
-    obj->polygon[0].x = near_point_->x - width;
-    obj->polygon[0].y = near_point_->y;
-    obj->polygon[1].x = near_point_->x - width;
-    obj->polygon[1].y = near_point_->y + 1;
-    obj->polygon[2].x = near_point_->x + width;
-    obj->polygon[2].y = near_point_->y + 1;
-    obj->polygon[3].x = near_point_->x + width;
-    obj->polygon[3].y = near_point_->y;
+    obj->polygon.resize(4);
 
+    // obj->polygon[0].x = near_point_->x - width;
+    // obj->polygon[0].y = near_point_->y;
+    // obj->polygon[1].x = near_point_->x - width;
+    // obj->polygon[1].y = near_point_->y + 1;
+    // obj->polygon[2].x = near_point_->x + width;
+    // obj->polygon[2].y = near_point_->y + 1;
+    // obj->polygon[3].x = near_point_->x + width;
+    // obj->polygon[3].y = near_point_->y;
     obj->distance = near_point_->distance;
 
     obj->type = near_point_->label;
     obj->sub_type = near_point_->sub_label;
     obj->center = Eigen::Vector3d(near_point_->x,near_point_->y,1.0);
+
+    //hoseob start
+    obj->center = pose * obj->center;
+    // AERROR << "center: " << obj->center.x() << "," << obj->center.y() << "," << obj->center.z();
+
+    obj->polygon[0].x = obj->center.x() - width;
+    obj->polygon[0].y = obj->center.y();
+    // obj->polygon[0].z = obj->center.z();
+    obj->polygon[1].x = obj->center.x() - width;
+    obj->polygon[1].y = obj->center.y() + 1;
+    // obj->polygon[1].z = obj->center.z();
+    obj->polygon[2].x = obj->center.x() + width;
+    obj->polygon[2].y = obj->center.y() + 1;
+    // obj->polygon[2].z = obj->center.z();
+    obj->polygon[3].x = obj->center.x() + width;
+    obj->polygon[3].y = obj->center.y();
+    // obj->polygon[3].z = obj->center.z();
+    //hoseob end
 
     ////
     if(viz_switch){
@@ -560,7 +593,7 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
         cv::Point( 0.5*top_view_width + (obj->polygon[0].x)*top_view_width/x_range, top_view_height - (obj->polygon[0].y)*top_view_height/y_range),
         cv::Point( 0.5*top_view_width + (obj->polygon[2].x)*top_view_width/x_range, top_view_height - (obj->polygon[2].y)*top_view_height/y_range),
         cv::Scalar(0, 0, 0), 2);
-
+ 
       std::string text_width = std::to_string(2*width);
 
       float trans_x = 0.5*top_view_width + (near_point_-> x)*top_view_width/x_range;
@@ -592,9 +625,9 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
 
     obj->motion_state = base::MotionState::UNKNOWN;
 
-    obj->size(0) = 0.05f;
-    obj->size(1) = 0.05f;
-    obj->size(2) = 2.0f;  // vehicle template (pnc required)
+    obj->size(0) = 4.81f;
+    obj->size(1) = 1.69f;
+    obj->size(2) = 1.57f;  // vehicle template (pnc required)
     /////////////////////////////////////////////////////////////////
     lidar2camera_frame->objects.push_back(obj);
 
@@ -607,13 +640,13 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
     // std::string front_file_path= "/apollo/data/output_front_view/"+img_time+".jpg";
     // cv::imwrite(front_file_path, front_view_img);
 
-    // cv::namedWindow("Front View", cv::WINDOW_NORMAL);
-    // cv::resizeWindow("Front View", 1000, 600);
-    // cv::imshow("Front View", front_view_img);
-    // cv::waitKey(10);
+    cv::namedWindow("Front View", cv::WINDOW_NORMAL);
+    cv::resizeWindow("Front View", 1000, 600);
+    cv::imshow("Front View", front_view_img);
+    cv::waitKey(10);
 
-    std::string top_file_path= "/apollo/data/output_top_view/"+img_time+".jpg";
-    cv::imwrite(top_file_path, top_view_img);
+    // std::string top_file_path= "/apollo/data/output_top_view/"+img_time+".jpg";
+    // cv::imwrite(top_file_path, top_view_img);
 
     cv::namedWindow("Top View", cv::WINDOW_NORMAL);
     cv::resizeWindow("Top View", 850, 1000);
@@ -641,7 +674,8 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
 
   out_message->timestamp_ = in_pcd_message->header().timestamp_sec();//hoseob
   out_message->seq_num_ = seq_num_;
-  out_message->process_stage_ = ProcessStage::LONG_RANGE_RADAR_DETECTION;
+  // out_message->process_stage_ = ProcessStage::LONG_RANGE_RADAR_DETECTION;
+  out_message->process_stage_ = ProcessStage::LIDAR_RECOGNITION;
   out_message->sensor_id_ = "velodyne128";
 
   out_message->frame_.reset(new base::Frame());

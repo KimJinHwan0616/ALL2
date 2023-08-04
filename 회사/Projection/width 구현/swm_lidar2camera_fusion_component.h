@@ -156,8 +156,8 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<drivers::
   std::vector<std::shared_ptr<PointIL>> box_near_pcd_msgs_;
 
   ////
-
-  std::unordered_map<int, float> largest_diff_map;
+  // std::unordered_map<int, float> largest_diff_map;
+  std::vector<double> box_w_map_;
 
   ////
   std::vector<cv::Scalar> colors = {
