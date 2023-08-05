@@ -1,22 +1,7 @@
-    # vector: { 값,  ... , 값 } #
-
 # Eigen: 행렬 #
 
 ㅁ Translation3d: 3차원 이동 변환
 ㅁ Quaterniond: 쿼터니언 회전
-ㅁ Affine3d: 3차원 회전+이동 변환
-| R11 R12 R13 Tx |
-| R21 R22 R23 Ty |
-| R31 R32 R33 Tz |
-|  0   0   0  1 |
-
-    .linear(): 회전 변환
-    .translation(): 이동 변환
 
 ㅁ Matrix3d: 3차원 회전 변환
 ㅁ Vector3d: 
-
-ㅁ 초기화(단위행렬)
-행렬::Identity()      // 정적 멤버 함수
-행렬.setIdentity()    // 멤버 함수
-
