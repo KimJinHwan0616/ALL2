@@ -5,3 +5,4 @@ VPU(Vision Processing Unit): 하드웨어 가속기
 
 FOV(Field of View): 카메라 관찰 가능 영역
 
+IMU(Internal Measurement Unit): 자세?

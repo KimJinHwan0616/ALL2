@@ -1,15 +1,17 @@
-#include <array>
 #include <iostream>
+#include <chrono>
 
 int main() {
-    std::array<int, 5> myArray = {1, 2, 3, 4, 5};
+    using namespace std::chrono;
 
-    for (int i = 0; i < myArray.size(); ++i) {
-        std::cout << myArray[i] << " ";
-    }
+    // 2.5초를 나타내는 duration 객체를 생성합니다.
+    auto duration_seconds = seconds(2) + milliseconds(500);
 
-    std::cout << "\nFront: " << myArray.front();
-    std::cout << "\nBack: " << myArray.back() << std::endl;
+    // duration 객체를 밀리초로 변환합니다.
+    auto duration_milliseconds = duration_cast<milliseconds>(duration_seconds);
+
+    // 결과를 출력합니다.
+    std::cout << "2.5 seconds in milliseconds: " << duration_milliseconds.count() << " milliseconds." << std::endl;
 
     return 0;
 }
