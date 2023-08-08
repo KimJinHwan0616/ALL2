@@ -17,10 +17,11 @@ git checkout -b '#이슈번호-이슈' origin/#이슈번호-이슈
 ./apollo.sh build_opt_gpu
 
 5. 채널 시작
-cyber_recorder play -f 레코드* -l
+cyber_recorder play -f 레코드* -l    # 계속
+cyber_recorder play -f 레코드* -k 채널 채널 ...    # 채널 종료
 
-cyber_recorder play -f data/bag/3/20230726152807.record.0000* -k /apollo/perception/obstacles /apollo/prediction
-cyber_recorder play -f data/bag/3/20230726152807.record.0000* -l
+
+cyber_recorder play -f data/bag/0/20230726152807.record.0000* -k /apollo/perception/obstacles /apollo/prediction
 cyber_recorder play -f data/bag/test/20230711171726.record.00000 -l
 
 6. 소스 코드 실행
