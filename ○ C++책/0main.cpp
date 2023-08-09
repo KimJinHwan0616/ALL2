@@ -1,17 +1,15 @@
 #include <iostream>
-#include <chrono>
+#include <cstring> // memcpy 함수를 사용하기 위해 필요한 헤더
 
 int main() {
-    using namespace std::chrono;
+    char source[] = "Hello, world!"; // 소스 메모리 영역
+    char target[20]; // 타겟 메모리 영역
 
-    // 2.5초를 나타내는 duration 객체를 생성합니다.
-    auto duration_seconds = seconds(2) + milliseconds(500);
+    // source에서 target으로 데이터 복사
+    std::memcpy(target, source, sizeof(source));
 
-    // duration 객체를 밀리초로 변환합니다.
-    auto duration_milliseconds = duration_cast<milliseconds>(duration_seconds);
-
-    // 결과를 출력합니다.
-    std::cout << "2.5 seconds in milliseconds: " << duration_milliseconds.count() << " milliseconds." << std::endl;
+    std::cout << "Source: " << source << std::endl;
+    std::cout << "Target: " << target << std::endl;
 
     return 0;
 }

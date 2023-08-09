@@ -1,8 +1,5 @@
-
-
 기본_자료형: 값    # 멤버(파일.h)
     ...
-
 
 예)
 sensor_name: "이름"    # Sensor Type

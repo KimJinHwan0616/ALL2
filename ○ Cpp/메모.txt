@@ -1,9 +1,10 @@
-Protocol Buffers(protobuf): 데이터 직렬화 라이브러리
-구조화된 데이터 → 직렬화(serialize), 역직렬화(deserialize)
+<constexpr>
+identity.h
 
-###################################
-<스레드>
-std::atomic  // 다중
+<MEMory CoPY>
+std::memcpy(타겟, 대상, 크기);
+
+
 ###################################
 연산자 중첩
 
@@ -24,9 +25,6 @@ int main() {
     std::cout << std::setprecision(N) << value << std::endl;
     return 0;
 }
-###################################
-<전처리 매크로>
-#ifndef    // IF Not DEFined
 
 ###################################
 https://www.youtube.com/watch?v=ZNr4ZJUvfUc&list=PLJqaIeuL7nuG6EmLPNiHfHi4WWN9C5HNd&index=80
