@@ -2,7 +2,7 @@
 identity.h
 
 <MEMory CoPY>
-std::memcpy(타겟, 대상, 크기);
+std::memcpy(사본, 원본, 크기);
 
 
 ###################################
