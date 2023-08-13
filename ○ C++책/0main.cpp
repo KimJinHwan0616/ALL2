@@ -1,31 +1,21 @@
 #include <iostream>
-#include <vector>
-#include <algorithm>
+#include <map>
+#include <string>
 
 int main() {
-    std::vector<int> numbers = {1, 2, 3, 4, 5, 3, 6};
+    std::map<std::string, int> dict;
 
-    // 조건 함수: 3과 같은 요소를 제거하기 위한 조건자
-    auto condition = [](int num) {
-        return num == 3;
-    };
+    dict["수학"] = 100;
+    dict["영어"] = 70;
+    dict["국어"] = 50;
 
-    // remove_if 함수 사용
-    auto newEnd = std::remove_if(numbers.begin(), numbers.end(), condition);
+    std::string subject_to_find = "영어";
+    auto range = dict.equal_range(subject_to_find);
 
-    // 제거된 요소 출력
-    std::cout << "Removed elements: ";
-    for (auto it = newEnd; it != numbers.end(); ++it) {
-        std::cout << *it << " ";
+    std::cout << "Scores for the subject " << ":" << subject_to_find << std::endl;
+    for (auto it = range.first; it != range.second; ++it) {
+        std::cout << "Score: " << it->second << std::endl;
     }
-    std::cout << std::endl;
-
-    // 남은 요소 출력
-    std::cout << "Remaining elements: ";
-    for (auto it = numbers.begin(); it != newEnd; ++it) {
-        std::cout << *it << " ";
-    }
-    std::cout << std::endl;
 
     return 0;
 }
