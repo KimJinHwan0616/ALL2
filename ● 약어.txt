@@ -3,5 +3,7 @@ cnt: CouNT
 ptr: PoinTR
 seq(uence)
 
+src: SouRCe
+dst: DeSTination
 
 
