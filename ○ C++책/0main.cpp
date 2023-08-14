@@ -1,17 +1,25 @@
 #include <iostream>
 
+class Bread {
+private:
+    int quantity;
+
+public:
+    Bread(int quantity) {
+        this->quantity = quantity;
+    }
+
+    int getQuantity() {
+        return this->quantity;
+    }
+};
+
 int main() {
-    int x = 5;
-    int y = 10;
+    Bread bread1(5);  // Bread 객체 생성, 빵의 수량은 5개
+    Bread bread2(10); // Bread 객체 생성, 빵의 수량은 10개
 
-    // 외부 변수 x를 참조로 캡처하고 매개변수 b를 받아 덧셈 수행
-    auto add_and_print = [&x](int a, int b) -> int {
-        int result = a + b + x;
-        // return result;
-        std::cout << "Result: " << result << std::endl;
-    };
-
-    add_and_print(3, y);
+    std::cout << "Bread 1 quantity: " << bread1.getQuantity() << std::endl;
+    std::cout << "Bread 2 quantity: " << bread2.getQuantity() << std::endl;
 
     return 0;
 }
