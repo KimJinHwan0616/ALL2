@@ -1,7 +1,5 @@
 launch → dag(conf, readers, ...) → conf.pb.txt → .h → component.cc, build
 
-★ 모듈문제는 빌드파일에서 추가해줘야함
-
 ROS(Robot Operating System): 로봇 소프트웨어 open source '프레임워크'
 ㅁ .launch(XML): 시스템 구성 정의
 
