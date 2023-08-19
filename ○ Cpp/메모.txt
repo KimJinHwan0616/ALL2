@@ -27,7 +27,6 @@ int main() {
 }
 
 ###################################
-https://www.youtube.com/watch?v=ZNr4ZJUvfUc&list=PLJqaIeuL7nuG6EmLPNiHfHi4WWN9C5HNd&index=80
 https://www.youtube.com/watch?v=w-vCiYoPmX8&list=PLJqaIeuL7nuG6EmLPNiHfHi4WWN9C5HNd&index=84
 포인터 배열
 
