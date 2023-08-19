@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *****************************************************************************/
-#include "modules/perception/onboard/component/swm_lidar2camera_fusion_component.h"
+#include "modules/perception/onboard/component/swm_bp_cam_fusion_component.h"
 
 #include "cyber/time/clock.h"
 #include "modules/common/util/perf_util.h"
@@ -28,13 +28,23 @@
 #include <thread>
 #include "opencv2/opencv.hpp"
 
+#define CAR_WIDTH  1.84
+#define CAR_LENGTH 4.96 
+#define CAR_HEIGHT 1.72 
+#define PEDESTRIAN_WIDTH  0.68
+#define PEDESTRIAN_LENGTH 1.93
+#define PEDESTRIAN_HEIGHT 1.29
+#define BICYCLE_WIDTH  0.64
+#define BICYCLE_LENGTH 0.49 
+#define BICYCLE_HEIGHT 1.63 
+
 namespace apollo {
 namespace perception {
 namespace onboard {
 
-// std::atomic<uint32_t> SwmLidar2cameraFusionComponent::seq_num_{0};
-uint32_t SwmLidar2cameraFusionComponent::seq_num_ = 0;
-std::mutex SwmLidar2cameraFusionComponent::s_mutex_;
+// std::atomic<uint32_t> SwmBpCamFusionComponent::seq_num_{0};
+uint32_t SwmBpCamFusionComponent::seq_num_ = 0;
+std::mutex SwmBpCamFusionComponent::s_mutex_;
 
 static bool LoadExtrinsics(const std::string &yaml_file,
                            Eigen::Matrix4d *camera_extrinsic) {
@@ -122,15 +132,15 @@ std::string ObjectSubTypeToString(base::ObjectSubType subtype) {
   }
 }
 
-bool SwmLidar2cameraFusionComponent::Init() {
-  SwmLidar2cameraFusionComponentConfig comp_config;
+bool SwmBpCamFusionComponent::Init() {
+  SwmBpCamFusionComponentConfig comp_config;
   if (!GetProtoConfig(&comp_config)) {
     return false;
   }
   AINFO << "Swm Lidar2camera Fusion Component Configs: " << comp_config.DebugString();
 
   viz_switch = comp_config.viz_switch();
-  AERROR << "viz_switch : " << viz_switch;
+  
 
   std::string camera_names_str = comp_config.camera_name();
   boost::algorithm::split(camera_names_, camera_names_str,
@@ -140,13 +150,16 @@ bool SwmLidar2cameraFusionComponent::Init() {
   boost::algorithm::split(lidar_names_, lidar_names_str,
                           boost::algorithm::is_any_of(","));
 
-
+  sub_lidar_fusion_name = comp_config.sub_lidar_fusion_name();
   if (!common::SensorManager::Instance()->GetSensorInfo(
           comp_config.sub_lidar_fusion_name(), &lidar_info_)) {
     AERROR << "Failed to get sensor info, sensor name: "
            << comp_config.sub_lidar_fusion_name();
     return false;
   }
+  AERROR << "viz_switch : " << viz_switch;
+  AERROR << "sub_lidar_fusion_name : " << sub_lidar_fusion_name;
+
 
   #ifndef shm_bp 
   // rsbp_reader_ = node_->CreateReader<apollo::drivers::PointCloud>(comp_config.input_bp_channel_name());
@@ -174,9 +187,9 @@ bool SwmLidar2cameraFusionComponent::Init() {
     AERROR << "Failed to init algorithm plugin.";
     return false;
   }
-  // writer_ = node_->CreateWriter<SensorFrameMessage>(
-  //     comp_config.output_obstacles_channel_name());
-  writer_ = node_->CreateWriter<SensorFrameMessage>("/perception/inner/PrefusedObjects");
+  writer_ = node_->CreateWriter<SensorFrameMessage>(
+      comp_config.output_obstacles_channel_name());
+  // writer_ = node_->CreateWriter<SensorFrameMessage>("/perception/inner/PrefusedObjects");
   // writer_ = node_->CreateWriter<SensorFrameMessage>(comp_config.output_obstacles_channel_name());
 
   // box_bp_writer_ = node_->CreateWriter<PointCloud>("perception/test/box_in_bp_data");
@@ -184,7 +197,7 @@ bool SwmLidar2cameraFusionComponent::Init() {
   return true;
 }
 
-bool SwmLidar2cameraFusionComponent::Proc(const std::shared_ptr<drivers::PointCloud>& message) {
+bool SwmBpCamFusionComponent::Proc(const std::shared_ptr<drivers::PointCloud>& message) {
   #ifndef shm_bp 
   box_reader_->Observe();
   auto in_box_message = box_reader_->GetLatestObserved();
@@ -263,17 +276,11 @@ bool SwmLidar2cameraFusionComponent::Proc(const std::shared_ptr<drivers::PointCl
     return false;
 
   }
-
   writer_->Write(out_message);
-  // bool send_sensorframe_ret = writer_->Write(out_message);
-  // if(!send_sensorframe_ret) {
-  //   AERROR << "send out prefused msg, ts: " << message->header().timestamp_sec()
-  //         << "ret: " << send_sensorframe_ret;
-  // }
   return true;
 }
 
-bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const drivers::PointCloud>& in_pcd_message,
+bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::PointCloud>& in_pcd_message,
                                                   const std::shared_ptr<PerceptionObstacles>& in_box_message,
                                                   const std::shared_ptr<SensorFrameMessage>& out_message){                                         
   //tf
@@ -281,41 +288,86 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
   Eigen::Affine3d pose_novatel = Eigen::Affine3d::Identity();
   const double lidar_query_tf_timestamp =
       // in_pcd_message->measurement_time();// - lidar_query_tf_offset_ * 0.001;
-      in_pcd_message->header().timestamp_sec();//hoseob
+      in_pcd_message->header().timestamp_sec()-0.1;//hoseob
+  
 
   if (!lidar2world_trans_.GetSensor2worldTrans(lidar_query_tf_timestamp, &pose,
                                                &pose_novatel)) {
-
-    while(lidar2world_trans_.GetSensor2worldTrans(lidar_query_tf_timestamp, &pose,
-                                               &pose_novatel)){
-      lidar_query_tf_timestamp + 0.01;
-    }
-
     return true;
   } 
 
-  //tf
-  // if(viz_switch){
-    uint16_t top_view_width = 1000;
-    uint16_t top_view_height = 2000;
-    uint8_t x_range = 50;
-    uint8_t y_range = 100;
+  uint16_t top_view_width = 2000;
+  uint16_t top_view_height = 2000;
+  uint8_t x_range = 100;
+  uint8_t y_range = 100;
 
-    cv::Mat top_view_img(top_view_height, top_view_width, CV_8UC3, cv::Scalar(255, 255, 255));
-    cv::Mat front_view_img(1080, 1920, CV_8UC3, cv::Scalar(255, 255, 255));
+  float camera_angle = 130;
 
-    // std::vector<cv::Scalar> colors = {cv::Scalar(0, 0, 255), 
-    // cv::Scalar(0, 255, 0), cv::Scalar(255, 0, 0), cv::Scalar(255,255,0), cv::Scalar(255,0,255)};
-  // }
+  cv::Mat top_view_img(top_view_height, top_view_width, CV_8UC3, cv::Scalar(255, 255, 255));
+  cv::Mat front_view_img(1080, 1920, CV_8UC3, cv::Scalar(255, 255, 255));
 
-  AERROR << "Frame........";
+    if (viz_switch) {
+      // front view //
+      cv::line(front_view_img, 
+        cv::Point(1920 * 0.5, 0),
+        cv::Point(1920 * 0.5, 1080), 
+        cv::Scalar(125, 0, 125), 2);
+
+      // top view //
+      cv::line(top_view_img, 
+        cv::Point(top_view_width * 0.5, 0),
+        cv::Point(top_view_width * 0.5, top_view_height), 
+        cv::Scalar(125, 0, 125), 2);
+      cv::line(top_view_img, 
+        cv::Point(top_view_width * 0.5-80, 0),
+        cv::Point(top_view_width * 0.5-80, top_view_height), 
+        cv::Scalar(125, 0, 125), 2);
+      cv::line(top_view_img, 
+        cv::Point(top_view_width * 0.5+80, 0),
+        cv::Point(top_view_width * 0.5+80, top_view_height), 
+        cv::Scalar(125, 0, 125), 2);
+      cv::circle(top_view_img, 
+        cv::Point(0.5*top_view_width + 0.0f*top_view_width/x_range, top_view_height - 3.58f*top_view_height/y_range), 
+        2, cv::Scalar(125, 0, 125), 25);
   
+      //## camera origin → imu
+      Eigen::Matrix<double, 3, 1> camera2imu_origin;
+      Eigen::Matrix<double, 3, 1> camera_origin;
+      camera_origin << 0, 0, 0;
+
+      Eigen::Matrix<double, 3, 3> imu2cameraMatrix_33d = imu2cameraMatrix_map_[camera_names_[0]].block<3, 3>(0, 0);
+      Eigen::Matrix<double, 3, 1> imu2cameraMatrix_31d = imu2cameraMatrix_map_[camera_names_[0]].col(3);
+
+      double camera2imu_origin_x = ( imu2cameraMatrix_33d.inverse() * (camera_origin - imu2cameraMatrix_31d) )(0);
+      double camera2imu_origin_y = ( imu2cameraMatrix_33d.inverse() * (camera_origin - imu2cameraMatrix_31d) )(1);
+
+      cv::circle(top_view_img, 
+        cv::Point(0.5*top_view_width + camera2imu_origin_x*top_view_width/x_range, 
+        top_view_height - camera2imu_origin_y*top_view_height/y_range), 
+        5, cv::Scalar(0, 0, 0), 5);
+
+      cv::Point start_point(
+          static_cast<int>(0.5 * top_view_width + camera2imu_origin_x * top_view_width / x_range),
+          static_cast<int>(top_view_height - camera2imu_origin_y * top_view_height / y_range));
+
+      double angle_rad = 90 - (camera_angle/2) * CV_PI / 180.0;
+
+      int end_plus_x = start_point.x + top_view_width*0.5;
+      int end_minus_x = start_point.x - top_view_width*0.5;
+
+      int end_plus_y = start_point.y - top_view_width*0.5 * std::tan(angle_rad);
+
+      cv::line(top_view_img, start_point, cv::Point(end_plus_x, end_plus_y), cv::Scalar(0, 0, 0), 1);
+      cv::line(top_view_img, start_point, cv::Point(end_minus_x, end_plus_y), cv::Scalar(0, 0, 0), 1);
+      //##
+
+    }
+
   box_roi_pcd_msgs_.clear();
   box_near_pcd_msgs_.clear();
+  // box_w_map_.clear();
 
-  box_w_map_.clear();
-
-  box_pcd_data = std::make_shared<PointCloud>();
+  // box_pcd_data = std::make_shared<PointCloud>();
   Eigen::Matrix<double, 3, 1>  projection_matrix_31d ;
   for (auto point : in_pcd_message->point()) {
     // if (point.y() >=7 || 6 <= point.z() || 0.0 >= point.z()) continue;
@@ -324,7 +376,8 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
     Eigen::Matrix<double, 4, 1>  bp_projection_41d = Eigen::Matrix<double, 4, 1> ::Identity();
     bp_projection_41d << point.x(), point.y(), point.z(), 1;
     projection_matrix_31d = resultMatrix_map_[camera_names_[0]] * bp_projection_41d ;
-
+    // AERROR << "resultMatrix_map_[camera_names_[0]] : " << resultMatrix_map_[camera_names_[0]];
+    
     int box_id = 0;
     for(auto& box : in_box_message->perception_obstacle()){
 
@@ -333,7 +386,6 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
 
       if(((box.bbox2d().xmin() <= nomal_x) && ( nomal_x <= box.bbox2d().xmax())) 
           && ((box.bbox2d().ymin() <= nomal_y) && ( nomal_y <= box.bbox2d().ymax()))){
-      
         // front view //
         if(viz_switch){
           cv::Scalar color;
@@ -370,12 +422,19 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
         box_roi_pcd_msgs_.push_back(std::move(box_roi_pcd_msg_));
 
         break;
+      // } else {
+      //   if(viz_switch){
+      //     // cv::circle(front_view_img, cv::Point(nomal_x, nomal_y), 1, colors[1], 1);
+      //     cv::circle(top_view_img, 
+      //         cv::Point(0.5*top_view_width + point.x()*top_view_width/x_range, top_view_height - point.y()*top_view_height/y_range), 
+      //         1, colors[1], 1);
+      //   }
       }
       box_id++;
     }
   }
 
-  for (int i =0 ; i < in_box_message->perception_obstacle_size();i++) {
+  for (int i =0 ; i < in_box_message->perception_obstacle_size();i++){
     float near_point = 100.0;
     std::shared_ptr<PointIL> box_near_pcd_msg_ = std::make_shared<PointIL>();
     for (const auto& box_ : box_roi_pcd_msgs_ ){
@@ -393,44 +452,103 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
       }
     }
     if (near_point == 100.0){continue;}
+    double pcd_box_xmin = 100000;
+    double pcd_box_ymin = 100000;
+    double pcd_box_xmax = -100000;
+    double pcd_box_ymax = -100000;
+    for (const auto& box_ : box_roi_pcd_msgs_ ){
+      if (box_->id == i){
+        if(box_->x < pcd_box_xmin){
+          pcd_box_xmin = box_->x;
+        }
+        if(box_->y < pcd_box_ymin){
+          pcd_box_ymin = box_->y;
+        }
+        if(box_->x > pcd_box_xmax){
+          pcd_box_xmax = box_->x;
+        }
+        if(box_->y > pcd_box_ymax){
+          pcd_box_ymax = box_->y;
+        }
+      }
+    }
+    // AERROR << "pcd_box_xmin : " << pcd_box_xmin << "," << pcd_box_ymin << "," << pcd_box_xmax << "," << pcd_box_ymax;
 
-    Eigen::Matrix<double, 4, 1> near_point_41d = Eigen::Matrix<double, 4, 1> ::Identity();
-    Eigen::Matrix<double, 3, 1> near_proj_point_31d ;
+    float anchor_width = 1.0f;
+    float anchor_length = 1.0f;
+    // float anchor_height = 1.0f;
 
-    near_point_41d << box_near_pcd_msg_->x, box_near_pcd_msg_->y, box_near_pcd_msg_->z, 1;
-    near_proj_point_31d = resultMatrix_map_[camera_names_[0]] * near_point_41d ;
+    float car_margin = 0.15;
+    float bicycle_margin = 0.1;
+    float pedestrian_margin = 0.06;
 
-    Eigen::Matrix<double, 3, 3> resultMatrix_33d = resultMatrix_map_[camera_names_[0]].block<3, 3>(0, 0);
-    Eigen::Matrix<double, 3, 1> resultMatrix_31d = resultMatrix_map_[camera_names_[0]].col(3);
+    if (box_near_pcd_msg_-> label == base::ObjectType::VEHICLE)
+    {
+      anchor_width = CAR_WIDTH - car_margin;
+      anchor_length = CAR_LENGTH - car_margin;
+      // anchor_height = CAR_HEIGHT - car_margin;
+    }
+    else if(box_near_pcd_msg_-> label == base::ObjectType::BICYCLE)
+    {
+      anchor_width = PEDESTRIAN_WIDTH - bicycle_margin;
+      anchor_length = PEDESTRIAN_LENGTH - bicycle_margin;
+      // anchor_height = PEDESTRIAN_HEIGHT - bicycle_margin;
+    }
+    else if(box_near_pcd_msg_-> label== base::ObjectType::PEDESTRIAN)
+    {
+      anchor_width = BICYCLE_WIDTH - pedestrian_margin;
+      anchor_length = BICYCLE_LENGTH - pedestrian_margin;
+      // anchor_height = BICYCLE_HEIGHT - pedestrian_margin;
+    }
 
-    auto depth = near_proj_point_31d(2);
-
-    const auto& box = in_box_message->perception_obstacle(i);
-    //test
-    // cout << "Object " << i << ", depth: " << depth << endl;
-    // cout << "xmin = " << box.bbox2d().xmin()
-    //           << ", xmax = " << box.bbox2d().xmax() << endl;
-    // cout << "ymin = " << box.bbox2d().ymin() << ", ymax = " << box.bbox2d().ymax() << endl;
-
-    Eigen::Matrix<double, 3, 1> img_box_min_31d(depth * box.bbox2d().xmin(), depth * box.bbox2d().ymin(), depth);
-    Eigen::Matrix<double, 3, 1> img_box_max_31d(depth * box.bbox2d().xmax(), depth * box.bbox2d().ymax(), depth);
-
-    double box_min_x = ( resultMatrix_33d.inverse() * (img_box_min_31d - resultMatrix_31d) )(0);
-    double box_max_x = ( resultMatrix_33d.inverse() * (img_box_max_31d - resultMatrix_31d) )(0);
-
-    double width = (box_max_x - box_min_x)*0.5;
-    // auto box_min_y = ( resultMatrix_33d.inverse() * (img_box_min_31d - resultMatrix_31d) )(1);
-    // auto box_max_y = ( resultMatrix_33d.inverse() * (img_box_max_31d - resultMatrix_31d) )(1);
-
-    //test
-    // cout << "box" << endl;
-    // std::cout << "min: (" << box_min_x << ", " << box_min_y << ")" << std::endl;
-    // std::cout << "max: (" << box_max_x << ", " << box_max_y << ")" << std::endl;
-    // cout << endl;
-
-    box_w_map_.push_back(width);
-    ////
+    // camera_angle
     
+    if(pcd_box_xmin < 0 && pcd_box_xmax < 0) {
+
+      if(pcd_box_ymin < 0 && pcd_box_ymax < 0) {
+        box_near_pcd_msg_-> x = pcd_box_xmax - anchor_width/2;
+        box_near_pcd_msg_-> y = pcd_box_ymax - anchor_length/2;
+      }
+      if(pcd_box_ymin < 0 && pcd_box_ymax > 0) {
+        box_near_pcd_msg_-> x = pcd_box_xmax - anchor_width/2;
+        box_near_pcd_msg_-> y = pcd_box_ymax - anchor_length/2;
+      }
+      if(pcd_box_ymin > 0 && pcd_box_ymax > 0) {
+        box_near_pcd_msg_-> x = pcd_box_xmax - anchor_width/2;
+        box_near_pcd_msg_-> y = pcd_box_ymin + anchor_length/2;
+      }
+    } 
+
+    if(pcd_box_xmin < 0 && pcd_box_xmax > 0) {
+      if(pcd_box_ymin > 0 && pcd_box_ymax > 0) {
+        box_near_pcd_msg_-> x = pcd_box_xmax - anchor_width/2;
+        box_near_pcd_msg_-> y = pcd_box_ymin + anchor_length/2;
+      }
+      if(pcd_box_ymin < 0 && pcd_box_ymax < 0) {
+        box_near_pcd_msg_-> x = pcd_box_xmax - anchor_width/2;
+        box_near_pcd_msg_-> y = pcd_box_ymin + anchor_length/2;
+      }
+    } 
+
+    if(pcd_box_xmin > 0 && pcd_box_xmax > 0) {
+
+      box_near_pcd_msg_-> x = pcd_box_xmin + anchor_width/2;
+      box_near_pcd_msg_-> y = pcd_box_ymin + anchor_length/2;
+
+      if(pcd_box_ymin < 0 && pcd_box_ymax < 0) {
+        box_near_pcd_msg_-> x = pcd_box_xmin + anchor_width/2;
+        box_near_pcd_msg_-> y = pcd_box_ymax - anchor_length/2;
+      }
+      if(pcd_box_ymin < 0 && pcd_box_ymax > 0) {
+        box_near_pcd_msg_-> x = pcd_box_xmax + anchor_width/2;
+        box_near_pcd_msg_-> y = pcd_box_ymax - anchor_length/2;
+      }
+      if(pcd_box_ymin > 0 && pcd_box_ymax > 0) {
+        box_near_pcd_msg_-> x = pcd_box_xmin + anchor_width/2;
+        box_near_pcd_msg_-> y = pcd_box_ymin + anchor_length/2;
+      }
+    } 
+
     if(viz_switch){
       // front view //
       Eigen::Matrix<double, 4, 1> box_min_distance_41d = Eigen::Matrix<double, 4, 1> ::Identity();
@@ -442,63 +560,51 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
       auto y_coord = std::round( near_proj_point_31d(1)/std::abs(near_proj_point_31d(2)) );
 
       // point
-      cv::circle(front_view_img, cv::Point(x_coord, y_coord), 5, cv::Scalar(0, 0, 0), 20);
-
+      cv::circle(front_view_img, cv::Point(x_coord, y_coord), 1, cv::Scalar(0, 0, 0), 10);
+      
       // rectangle
+      const auto& box = in_box_message->perception_obstacle(i);
       cv::rectangle(front_view_img, cv::Point(box.bbox2d().xmin(), box.bbox2d().ymin()),
                   cv::Point(box.bbox2d().xmax(), box.bbox2d().ymax()), cv::Scalar(0, 0, 0), 2);
 
       // text
       std::string front_text_sub_label = ObjectSubTypeToString(box_near_pcd_msg_->sub_label);
       std::string front_text_y_coord = std::to_string(box_near_pcd_msg_->y);
-
+      
       cv::putText(front_view_img, front_text_sub_label, cv::Point(x_coord-65, y_coord-60), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 0), 2);
       cv::putText(front_view_img, front_text_y_coord, cv::Point(x_coord-75, y_coord-30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 0), 2);
       
-      ////////////////////////////////////////////////////////////////////////////////////////////
       // top view //
-      // cv::Scalar color;
-      // if (box_near_pcd_msg_->id < (int)colors.size()) {
-      //     color = colors[box_near_pcd_msg_->id];
-      // } else {
-      //     color = cv::Scalar(125, 125, 125);  // White color for extra boxes
-      // }
       float trans_x = 0.5*top_view_width + (box_near_pcd_msg_-> x)*top_view_width/x_range;
       float trans_y = top_view_height - (box_near_pcd_msg_-> y)*top_view_height/y_range;
 
       // center point
-      cv::circle(top_view_img, 
-        cv::Point(trans_x, trans_y), 
-        2, cv::Scalar(0, 0, 0), 2);
-      // cv::circle(top_view_img, cv::Point(box_near_pcd_msg_-> trans_x, box_near_pcd_msg_-> trans_y), 1, cv::Scalar(0, 0, 0), 1);
+      cv::circle(top_view_img, cv::Point(trans_x, trans_y), 2, cv::Scalar(0, 0, 0), 3);
 
       // text
       std::string top_text_sub_label = ObjectSubTypeToString(box_near_pcd_msg_->sub_label);
       cv::putText(top_view_img, top_text_sub_label, cv::Point(trans_x-65, trans_y-60), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 0), 2);
-
       std::string top_text_y_coord = std::to_string(box_near_pcd_msg_->y);
       cv::putText(top_view_img, top_text_y_coord, cv::Point(trans_x-75, trans_y-30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 0), 2);
-      ////
+
     }
 
-    PointXYZIT* point_new = box_pcd_data->add_point();
-        point_new->set_x(box_near_pcd_msg_->x);
-        point_new->set_y(box_near_pcd_msg_->y);
-        point_new->set_z(box_near_pcd_msg_->z);
-        point_new->set_intensity(80);
-        point_new->set_timestamp(0);
-
+    // PointXYZIT* point_new = box_pcd_data->add_point();
+    //     point_new->set_x(box_near_pcd_msg_->x);
+    //     point_new->set_y(box_near_pcd_msg_->y);
+    //     point_new->set_z(box_near_pcd_msg_->z);
+    //     point_new->set_intensity(80);
+    //     point_new->set_timestamp(0);
     box_near_pcd_msgs_.push_back(std::move(box_near_pcd_msg_));
   }
 
   // box_bp_writer_->Write(box_pcd_data);
 
-  base::FramePtr lidar2camera_frame(new base::Frame());
-
+  base::FramePtr bp_cam_fusion_frame(new base::Frame());
   for(auto& near_point_ : box_near_pcd_msgs_){
     base::ObjectPtr obj(new base::Object);
 
-    double width = box_w_map_[near_point_->id];
+    // double width = box_w_map_[near_point_->id];
 
     obj->id = nearest_obstacle_id;
     obj->track_id = nearest_obstacle_id;
@@ -510,20 +616,39 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
     obj->type_probs[static_cast<int>(obj->type)] = 1.0f;
     obj->sub_type = near_point_->sub_label;
     obj->sub_type_probs[static_cast<int>(obj->sub_type)] = 1.0f;
-    
     obj->distance = near_point_->distance;
     obj->center = Eigen::Vector3d(near_point_->x,near_point_->y,1.0);
     //hoseob start
     obj->center = pose * obj->center;
 
-    double view_x0 = near_point_->x - width;
-    double view_y0 = near_point_->y;
-    double view_x1 = near_point_->x - width;
-    double view_y1 = near_point_->y + 1;
-    double view_x2 = near_point_->x + width;
-    double view_y2 = near_point_->y + 1;
-    double view_x3 = near_point_->x + width;
-    double view_y3 = near_point_->y;
+    float anchor_width = 1.0f;
+    float anchor_length = 1.0f;
+    float anchor_height = 1.0f;
+    float car_margin = 0.15;
+    float bicycle_margin = 0.1;
+    float pedestrian_margin = 0.06;
+
+    if (obj->type == base::ObjectType::VEHICLE) {
+      anchor_width = CAR_WIDTH - car_margin;
+      anchor_length = CAR_LENGTH - car_margin;
+    }
+    else if(obj->type == base::ObjectType::BICYCLE) {
+      anchor_width = PEDESTRIAN_WIDTH - bicycle_margin;
+      anchor_length = PEDESTRIAN_LENGTH - bicycle_margin;
+    }
+    else if(obj->type == base::ObjectType::PEDESTRIAN) {
+      anchor_width = BICYCLE_WIDTH - pedestrian_margin;
+      anchor_length = BICYCLE_LENGTH - pedestrian_margin;
+    }
+
+    double view_x0 = near_point_->x - anchor_width/2;
+    double view_y0 = near_point_->y - anchor_length/2;
+    double view_x1 = near_point_->x - anchor_width/2;
+    double view_y1 = near_point_->y + anchor_length/2;
+    double view_x2 = near_point_->x + anchor_width/2;
+    double view_y2 = near_point_->y + anchor_length/2;
+    double view_x3 = near_point_->x + anchor_width/2;
+    double view_y3 = near_point_->y - anchor_length/2;
     Eigen::Vector3d point1 = Eigen::Vector3d(view_x0, view_y0, 1.0);
     Eigen::Vector3d point2 = Eigen::Vector3d(view_x1, view_y1, 1.0);
     Eigen::Vector3d point3 = Eigen::Vector3d(view_x2, view_y2, 1.0);
@@ -556,67 +681,69 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
     obj->center_uncertainty = Eigen::Matrix3f::Zero();
     obj->velocity_uncertainty = Eigen::Matrix3f::Zero();
     Eigen::Vector3f direction(0.0f, 0.0f, 0.0f);
-    obj->direction = direction;
-    obj->theta = 0.0f;
-    // obj->theta = -2.740164611; // 23
+    // obj->direction = direction;
+    // obj->theta = 0.0f;
+    //hoseob start
+    Eigen::Matrix<double, 3, 3> resultMatrix_33d = resultMatrix_map_[camera_names_[0]].block<3, 3>(0, 0);
+    obj->direction[0] = static_cast<float>(resultMatrix_33d(0,0));
+    obj->direction[1] = static_cast<float>(resultMatrix_33d(1,1));
+    obj->direction[2] = 0;
+    obj->theta = static_cast<float>(atan2(-obj->direction[1], -obj->direction[0]));
+    //hoseob end
     obj->theta_variance = 0.0f;
     obj->confidence = 1.0f;
 
     obj->motion_state = base::MotionState::UNKNOWN;
 
-    obj->size(0) = 4.81f;
-    obj->size(1) = 1.69f;
-    obj->size(2) = 1.57f;  // vehicle template (pnc required)
-
+    obj->size(0) = anchor_length;//1.0f;
+    obj->size(1) = anchor_width;//1.0f;
+    obj->size(2) = anchor_height;//1.0f;  // vehicle template (pnc required)
+    // obj->radar_supplement.range = near_point_->distance;
     Eigen::Vector3d size_cuboid_standard;
     size_cuboid_standard = obj->size.cast<double>();
     obj->size_cuboid_standard = size_cuboid_standard.cast<float>();
     /////////////////////////////////////////////////////////////////
-    lidar2camera_frame->objects.push_back(obj);
+    bp_cam_fusion_frame->objects.push_back(obj);
 
-    // out_message->frame_->objects.push_back(obj);
 
     if(viz_switch){
       cv::rectangle(top_view_img, 
         cv::Point( 0.5*top_view_width + (view_x0)*top_view_width/x_range, top_view_height - (view_y0)*top_view_height/y_range),
         cv::Point( 0.5*top_view_width + (view_x2)*top_view_width/x_range, top_view_height - (view_y2)*top_view_height/y_range),
-        cv::Scalar(0, 0, 0), 2);
+        cv::Scalar(0, 0, 0), 3);
  
-      std::string text_width = std::to_string(2*width);
+      // std::string text_width = std::to_string(2*width);
 
-      float trans_x = 0.5*top_view_width + (near_point_-> x)*top_view_width/x_range;
-      float trans_y = top_view_height - (near_point_-> y)*top_view_height/y_range;
+      // float trans_x = 0.5*top_view_width + (near_point_-> x)*top_view_width/x_range;
+      // float trans_y = top_view_height - (near_point_-> y)*top_view_height/y_range;
 
-      cv::putText(top_view_img, text_width, cv::Point(trans_x-75, trans_y+30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(125, 125, 125), 2);
+      // cv::putText(top_view_img, text_width, cv::Point(trans_x-75, trans_y+30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(125, 125, 125), 2);
     }
   }
 
   if(viz_switch){
     std::string img_time = std::to_string(Time::Now().ToNanosecond());
+    
+    std::string front_view_name = sub_lidar_fusion_name + "Front View";
+    std::string top_view_name = sub_lidar_fusion_name + "Top View";
 
-    // std::string front_file_path= "/apollo/data/output_front_view/"+img_time+".jpg";
-    // cv::imwrite(front_file_path, front_view_img);
 
-    // cv::namedWindow("Front View", cv::WINDOW_NORMAL);
-    // cv::resizeWindow("Front View", 1000, 600);
-    // cv::imshow("Front View", front_view_img);
-    // cv::waitKey(10);
+    cv::namedWindow(front_view_name, cv::WINDOW_NORMAL);
+    cv::resizeWindow(front_view_name, 1000, 600);
+    cv::imshow(front_view_name, front_view_img);
+    cv::waitKey(10);
 
-    // std::string top_file_path= "/apollo/data/output_top_view/"+img_time+".jpg";
-    // cv::imwrite(top_file_path, top_view_img);
-
-    // cv::namedWindow("Top View", cv::WINDOW_NORMAL);
-    // cv::resizeWindow("Top View", 850, 1000);
-    // cv::imshow("Top View", top_view_img);
-    // cv::waitKey(10);
+    cv::namedWindow(top_view_name, cv::WINDOW_NORMAL);
+    cv::resizeWindow(top_view_name, 850, 1000);
+    cv::imshow(top_view_name, top_view_img);
+    cv::waitKey(10);
   }
 
-  lidar2camera_frame->timestamp = in_pcd_message->header().timestamp_sec();
-  // lidar2camera_frame->sensor2world_pose = *(options.radar2world_pose);
+  bp_cam_fusion_frame->timestamp = in_pcd_message->header().timestamp_sec();
 
-  std::vector<base::ObjectPtr> lidar2camera_objects;
-  if (!lidar2camera_perception_->Perceivelidar2camera(lidar2camera_frame,
-                                   &lidar2camera_objects)) {
+  std::vector<base::ObjectPtr> bp_cam_fusion_objects;
+  if (!bp_cam_fusion_perception_->Perceivebp_cam_fusion(bp_cam_fusion_frame,
+                                   &bp_cam_fusion_objects)) {
     out_message->error_code_ =
         apollo::common::ErrorCode::PERCEPTION_ERROR_PROCESS;
     AERROR << "RadarDetector Proc failed.";
@@ -624,39 +751,33 @@ bool SwmLidar2cameraFusionComponent::InternalProc(const std::shared_ptr<const dr
   }
 
   ++seq_num_;
+  
+    out_message->timestamp_ = in_pcd_message->header().timestamp_sec();//hoseob
+    out_message->seq_num_ = seq_num_;
+    out_message->process_stage_ = ProcessStage::LIDAR_RECOGNITION;
+    out_message->frame_.reset(new base::Frame());
+    out_message->frame_->sensor2world_pose = pose;
+    out_message->frame_->sensor_info = lidar_info_;
+    out_message->frame_->objects = bp_cam_fusion_objects;
+    out_message->sensor_id_ = sub_lidar_fusion_name;
 
-  // out_message->timestamp_ = in_pcd_message->measurement_time();
-  // AERROR << lidar2camera_objects.size();
-  out_message->timestamp_ = in_pcd_message->header().timestamp_sec();//hoseob
-  out_message->seq_num_ = seq_num_;
-  // out_message->process_stage_ = ProcessStage::LONG_RANGE_RADAR_DETECTION;
-  out_message->process_stage_ = ProcessStage::LIDAR_RECOGNITION;
-  out_message->sensor_id_ = "velodyne128";
-
-  out_message->frame_.reset(new base::Frame());
-  out_message->frame_->sensor2world_pose = pose;
-  out_message->frame_->sensor_info = lidar_info_;
-  out_message->frame_->objects = lidar2camera_objects;
   return true;
 }
 
-bool SwmLidar2cameraFusionComponent::InitAlgorithmPlugin() {
-  // AERROR << "InitAlgorithmPlugin start is ok";
+bool SwmBpCamFusionComponent::InitAlgorithmPlugin() {
 
-  // std::string pipeline_name_ = "lidar2cameraObstaclePerception";
-  // std::string perception_method_ = "Frontlidar2cameraPipeline";
-  std::string perception_method_ = "lidar2cameraObstaclePerception";
-  std::string pipeline_name_ = "Frontlidar2cameraPipeline";
+  std::string perception_method_ = "BpCamFusionObstaclePerception";
+  std::string pipeline_name_ = "Frontbp_cam_fusionPipeline";
 
-  lidar2camera::Baselidar2cameraObstaclePerception* lidar2camera_perception =
-      lidar2camera::Baselidar2cameraObstaclePerceptionRegisterer::GetInstanceByName(
+  bp_cam_fusion::BaseBpCamFusionObstaclePerception* bp_cam_fusion_perception =
+      bp_cam_fusion::BaseBpCamFusionObstaclePerceptionRegisterer::GetInstanceByName(
           perception_method_);
-  ACHECK(lidar2camera_perception != nullptr)
-      << "No lidar2camera obstacle perception named: " << perception_method_;
-  lidar2camera_perception_.reset(lidar2camera_perception);
+  ACHECK(bp_cam_fusion_perception != nullptr)
+      << "No bp_cam_fusion obstacle perception named: " << perception_method_;
+  bp_cam_fusion_perception_.reset(bp_cam_fusion_perception);
 
-  ACHECK(lidar2camera_perception_->Init(pipeline_name_))
-      << "Failed to init lidar2camera perception.";
+  ACHECK(bp_cam_fusion_perception_->Init(pipeline_name_))
+      << "Failed to init bp_cam_fusion perception.";
   AINFO << "Init algorithm plugin successfully.";
 
   for (const auto &camera_name : camera_names_) {
@@ -703,6 +824,12 @@ bool SwmLidar2cameraFusionComponent::InitAlgorithmPlugin() {
 
     Eigen::Matrix<double, 4, 4>  lid_extrinsic_44d;
     lid_extrinsic_44d = lid_extrinsic.inverse().block<4, 4>(0, 0);
+
+    //##
+    Eigen::Matrix<double, 3, 4> imu2cameraMatrix;
+    imu2cameraMatrix = cam_extrinsic_34d * lid_extrinsic_44d;
+    imu2cameraMatrix_map_[camera_name] = imu2cameraMatrix;
+    //##
 
     Eigen::Matrix<double, 3, 4> resultMatrix;
     resultMatrix = intrinsic.cast<double>() * cam_extrinsic_34d * lid_extrinsic_44d;

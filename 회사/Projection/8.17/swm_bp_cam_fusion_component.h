@@ -27,15 +27,15 @@
 #include "modules/perception/fusion/lib/interface/base_fusion_system.h"
 #include "modules/perception/map/hdmap/hdmap_input.h"
 #include "modules/perception/onboard/inner_component_messages/inner_component_messages.h"
-#include "modules/perception/onboard/proto/swm_lidar2camera_fusion_component_config.pb.h"
+#include "modules/perception/onboard/proto/swm_bp_cam_fusion_component_config.pb.h"
 #include "modules/drivers/proto/pointcloud.pb.h"
 #include "cyber/direct_shared_memory/direct_shared_memory.h"
 #include <map>
 #include "modules/perception/onboard/transform_wrapper/transform_wrapper.h"
 #include "modules/perception/base/object_types.h"
 #include "modules/common/util/eigen_defs.h"
-#include "modules/perception/lidar2camera/lib/interface/base_tracker.h"
-#include "modules/perception/lidar2camera/lib/interface/base_lidar2camera_obstacle_perception.h"
+#include "modules/perception/bp_cam_fusion/lib/interface/base_tracker.h"
+#include "modules/perception/bp_cam_fusion/lib/interface/base_bp_cam_fusion_obstacle_perception.h"
 #include "opencv2/opencv.hpp"
 
 // #define shm_bp 
@@ -49,10 +49,10 @@ using namespace apollo::drivers;
 using apollo::cyber::Reader;
 using apollo::cyber::Writer;
 
-class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<drivers::PointCloud>  {
+class SwmBpCamFusionComponent : public apollo::cyber::Component<drivers::PointCloud>  {
  public:
-  SwmLidar2cameraFusionComponent()  = default;
-  ~SwmLidar2cameraFusionComponent() = default;
+  SwmBpCamFusionComponent()  = default;
+  ~SwmBpCamFusionComponent() = default;
   bool Init() override;
   bool Proc(const std::shared_ptr<drivers::PointCloud>& message) override;
 
@@ -72,7 +72,7 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<drivers::
 
   int nearest_obstacle_id = 0;
 
-  std::shared_ptr<lidar2camera::Baselidar2cameraObstaclePerception> lidar2camera_perception_;
+  std::shared_ptr<bp_cam_fusion::BaseBpCamFusionObstaclePerception> bp_cam_fusion_perception_;
 
   base::SensorInfo lidar_info_;
   base::SensorInfo camera_info_;
@@ -120,12 +120,7 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<drivers::
   static std::mutex s_mutex_;
   static uint32_t seq_num_;
 
-  std::string fusion_name_;
-  std::string fusion_method_;
-  std::string fusion_main_sensor_;
-  bool object_in_roi_check_ = false;
-  double radius_for_roi_object_check_ = 0;
-
+  std::string sub_lidar_fusion_name;
   std::shared_ptr<apollo::cyber::Writer<SensorFrameMessage>> writer_;
   std::shared_ptr<apollo::cyber::Reader<PointCloud>> rsbp_reader_;
   std::shared_ptr<apollo::cyber::Reader<PerceptionObstacles>> box_reader_;
@@ -139,6 +134,7 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<drivers::
   EigenMap<std::string, Eigen::Matrix4d> extrinsic_map_;
   EigenMap<std::string, Eigen::Matrix3f> intrinsic_map_;
   EigenMap<std::string, Eigen::Matrix<double, 3, 4>> resultMatrix_map_;
+  EigenMap<std::string, Eigen::Matrix<double, 3, 4>> imu2cameraMatrix_map_;
 
   std::vector<float> box_centers; 
 
@@ -188,7 +184,7 @@ class SwmLidar2cameraFusionComponent : public apollo::cyber::Component<drivers::
 };
 
 
-CYBER_REGISTER_COMPONENT(SwmLidar2cameraFusionComponent);
+CYBER_REGISTER_COMPONENT(SwmBpCamFusionComponent);
 
 }  // namespace onboard
 }  // namespace perception
