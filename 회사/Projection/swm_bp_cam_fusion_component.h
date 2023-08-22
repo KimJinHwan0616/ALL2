@@ -19,6 +19,8 @@
 #include <string>
 #include <vector>
 
+#include <Eigen/Dense>
+
 #include "cyber/cyber.h"
 #include "cyber/component/component.h"
 #include "modules/perception/base/object.h"
@@ -61,6 +63,8 @@ class SwmBpCamFusionComponent : public apollo::cyber::Component<drivers::PointCl
   bool InternalProc(const std::shared_ptr<const drivers::PointCloud>& in_pcd_message,
                     const std::shared_ptr<PerceptionObstacles>& in_box_message,
                     const std::shared_ptr<SensorFrameMessage>& out_message);
+  double RoiBoxLength(const double roi_box_x_min, const double roi_box_x_max,
+                      const double roi_box_y_min, const double roi_box_y_max, const int ind);
 
   std::shared_ptr<PointCloud> box_pcd_data ;
   std::shared_ptr<Writer<PointCloud>> box_bp_writer_;
@@ -77,6 +81,7 @@ class SwmBpCamFusionComponent : public apollo::cyber::Component<drivers::PointCl
   base::SensorInfo lidar_info_;
   base::SensorInfo camera_info_;
   bool viz_switch = false;
+  double occlusion_filter = 5;
   
   #ifdef shm_bp 
   // shm start
@@ -150,10 +155,11 @@ class SwmBpCamFusionComponent : public apollo::cyber::Component<drivers::PointCl
   // std::shared_ptr<PointIL> box_roi_pcd_msg_;
   std::vector<std::shared_ptr<PointIL>> box_roi_pcd_msgs_;
   std::vector<std::shared_ptr<PointIL>> box_near_pcd_msgs_;
+  std::vector<std::shared_ptr<PointIL>> box_roi_pcd_msgs_erase;
 
   ////
   // std::unordered_map<int, float> largest_diff_map;
-  std::vector<double> box_w_map_;
+  // std::vector<double> box_w_map_;
 
   ////
   std::vector<cv::Scalar> colors = {
@@ -180,7 +186,12 @@ class SwmBpCamFusionComponent : public apollo::cyber::Component<drivers::PointCl
   cv::Scalar(137, 86, 215)
   };
   ////  
+  std::vector<double> anchor_width_vec;
+  std::vector<double> anchor_length_vec;
+  std::vector<double> anchor_height_vec;
 
+  map::HDMapInput* hdmap_input_ = nullptr;
+  Eigen::Vector3d lane_direction;
 };
 
 
