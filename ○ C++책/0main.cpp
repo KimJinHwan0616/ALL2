@@ -1,16 +1,9 @@
 #include <iostream>
-#include <string>
-#include <functional>  // for std::hash
 
 int main() {
-    std::string key = "Hello, World!";
-
-    // 해시 함수를 사용하여 문자열을 해싱하여 해시 코드를 생성
-    std::size_t hashCode = std::hash<std::string>{}(key);
-
-    std::cout << "Original Key: " << key << std::endl;
-    std::cout << "Hash Code: " << hashCode << std::endl;
-    std::cout << "Type of hashCode: " << typeid(hashCode).name() << std::endl;
-
+    char myChar = 'A'; // 문자 'A'를 저장
+    
+    std::cout << "myChar: " << myChar << std::endl; // 문자 'A' 출력
+    
     return 0;
 }
