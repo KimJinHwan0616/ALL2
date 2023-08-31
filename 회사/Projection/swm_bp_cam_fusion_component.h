@@ -40,6 +40,8 @@
 #include "modules/perception/bp_cam_fusion/lib/interface/base_bp_cam_fusion_obstacle_perception.h"
 #include "opencv2/opencv.hpp"
 
+#include "modules/drivers/lidar/common/CVC_cluster/CVC_cluster.h"
+
 // #define shm_bp 
 
 namespace apollo {
@@ -63,8 +65,10 @@ class SwmBpCamFusionComponent : public apollo::cyber::Component<drivers::PointCl
   bool InternalProc(const std::shared_ptr<const drivers::PointCloud>& in_pcd_message,
                     const std::shared_ptr<PerceptionObstacles>& in_box_message,
                     const std::shared_ptr<SensorFrameMessage>& out_message);
-  double RoiBoxLength(const double roi_box_x_min, const double roi_box_x_max,
-                      const double roi_box_y_min, const double roi_box_y_max, const int ind);
+  void CalcHeading(cv::Point2f& point1, cv::Point2f& point2, Eigen::Affine3d& pose, float& heading);
+  void CalDiffAngle(float angle1, float angle2, float& diff_angle);
+
+  void CvcClustering(const Eigen::MatrixX3f target_nongroundd);
 
   std::shared_ptr<PointCloud> box_pcd_data ;
   std::shared_ptr<Writer<PointCloud>> box_bp_writer_;
@@ -141,7 +145,13 @@ class SwmBpCamFusionComponent : public apollo::cyber::Component<drivers::PointCl
   EigenMap<std::string, Eigen::Matrix<double, 3, 4>> resultMatrix_map_;
   EigenMap<std::string, Eigen::Matrix<double, 3, 4>> imu2cameraMatrix_map_;
 
+  std::map<int, int> over_box;
+  std::map<int, float> mean_box_dis;
+
+  double f_x;
+
   std::vector<float> box_centers; 
+
 
   struct alignas(16) PointIL {
     float x = 0;
@@ -151,20 +161,90 @@ class SwmBpCamFusionComponent : public apollo::cyber::Component<drivers::PointCl
     int id = -1;
     base::ObjectType label = base::ObjectType::UNKNOWN;
     base::ObjectSubType sub_label = base::ObjectSubType::UNKNOWN;
+    double box_xlength = 0;
+    double box_ylength = 0;
   };
+
+  struct alignas(16) Box_Point_check {
+    float x = 0;
+    float y = 0;
+    float z = 0;
+    float distance =0;
+    std::vector<float> id ;
+    std::vector<base::ObjectType> label ;
+    std::vector<base::ObjectSubType> sub_label ;
+    std::vector<double> box_xlength ;
+    std::vector<double> box_ylength ;
+  };
+
+  struct BoxInfo {
+    int id = -1;
+    std::vector<cv::Point2f> points;
+    cv::Point2f box_center;
+    cv::Point2f box_point1;
+    cv::Point2f box_point2;
+    cv::Point2f box_point3;
+    cv::Point2f box_point4;
+    bool lshape_state;
+  };
+  std::vector<std::shared_ptr<BoxInfo>> BoxesInfo;
+  float lane_heading;
+
   // std::shared_ptr<PointIL> box_roi_pcd_msg_;
   std::vector<std::shared_ptr<PointIL>> box_roi_pcd_msgs_;
   std::vector<std::shared_ptr<PointIL>> box_near_pcd_msgs_;
   std::vector<std::shared_ptr<PointIL>> box_roi_pcd_msgs_erase;
+  std::vector<std::shared_ptr<PointIL>> box_roi_pcd_msgs_dummy;
+  std::vector<std::shared_ptr<PointIL>> box_roi_pcd_msgs_cvc;
 
-  ////
-  // std::unordered_map<int, float> largest_diff_map;
-  // std::vector<double> box_w_map_;
+  std::vector<std::shared_ptr<Box_Point_check>> box_checks;
 
-  ////
+  std::vector<double> car_gradient_vec;
+  std::vector<double> van_gradient_vec;
+  std::vector<double> truck_gradient_vec;
+  std::vector<double> bus_gradient_vec;
+  std::vector<double> cyclist_gradient_vec;
+  std::vector<double> motorcyclist_gradient_vec;
+  std::vector<double> tricyclist_gradient_vec;
+  std::vector<double> pedestrian_gradient_vec;
+  std::vector<double> trafficon_gradient_vec;
+
+  double car_gradient = 1.55;
+  double van_gradient = 2.2;
+  double truck_gradient = 2.2;
+  double bus_gradient = 3.0;
+  double cyclist_gradient = 1.6;
+  double motorcyclist_gradient = 1.6;
+  double tricyclist_gradient = 1.6;
+  double pedestrian_gradient = 1.6;
+  double trafficon_gradient = 1.0;
+
+  uint16_t top_view_width = 2000;
+  uint16_t top_view_height = 2000;
+  uint8_t x_range = 50;
+  uint8_t y_range = 25;
+
+  // cv::Mat top_view_img ;
+  // cv::Mat front_view_img ;
+  // cv::Mat top_view_img_init ;
+  // cv::Mat front_view_img_init ;
+
+  double camera2imu_origin_x ;
+  double camera2imu_origin_y ;
+  // double angle_rad ;
+  double angle_l_rad ;
+  double angle_r_rad ;
+  float camera_angle = 80;
+
+  double y_r ;
+  double y_r_thd ;
+
+  double y_l;
+  double y_l_thd;
+  
   std::vector<cv::Scalar> colors = {
   cv::Scalar(0, 0, 255), 
-  cv::Scalar(0, 255, 0),
+  // cv::Scalar(0, 255, 0),
   cv::Scalar(255, 0, 0),
   cv::Scalar(255,255,0),
   cv::Scalar(255,0,255),
@@ -185,7 +265,7 @@ class SwmBpCamFusionComponent : public apollo::cyber::Component<drivers::PointCl
   cv::Scalar(60, 190, 255), 
   cv::Scalar(137, 86, 215)
   };
-  ////  
+
   std::vector<double> anchor_width_vec;
   std::vector<double> anchor_length_vec;
   std::vector<double> anchor_height_vec;

@@ -21,7 +21,9 @@ cyber_recorder play -f 레코드* -l    # 계속
 cyber_recorder play -f 레코드* -k 채널 채널 ...    # 채널 종료
 
 cyber_recorder play -f data/bag/0829/1/20230828181746.record.0000* -k /apollo/perception/obstacles /apollo/prediction
+cyber_recorder play -f data/bag/0829/2/20230828184149.record.000* -k /apollo/perception/obstacles /apollo/prediction
 cyber_recorder play -f data/bag/0808/1/20230808110140.record.000* -k /apollo/perception/obstacles /apollo/prediction
+
 cyber_recorder play -f data/bag/0/20230726152807.record.0000* -k /apollo/perception/obstacles /apollo/prediction
 
 6. 소스 코드 실행
