@@ -619,21 +619,17 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
       }
     }
 
-    //## 좌표계 기준 변경(imu -> 클러스터)
-    // x좌표: 0.5*top_view_width + (x)*top_view_width/x_range, 
-    // y좌표: top_view_height - (y)*top_view_height/y_range
-
-    // 0.5*(cluster_xmin+cluster_xmax) + (x)*(cluster_xmin+cluster_xmax)
-    //## 
-
     if(cluster_point->size() > 1) {
       //###
       vector<float> param(3,0);
-      param[0] = 361;    //2
-      param[1] = 0.5;  //0.4   ==> 0.5
-      param[2] = 361;  //1.5
+      param[0] = 4;  // 고도각 2
+      param[1] = 0.95 // 거리
+      // param[2] = 361;  // 방위각 1.5
+      param[2] = 361;  // 방위각 1.5
 
       CVC Cluster(param);
+
+      // CVC Cluster;
 
       std::vector<PointAPR> capr;
       Cluster.calculateAPR(*cluster_point, capr);
@@ -641,6 +637,7 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
       //##
       double range = Cluster.max_range() - Cluster.min_range();
       int num_points = capr.size();
+      // int num_points = box_roi_pcd_msgs_.size();
       //##
 
       std::unordered_map<int, Voxel> hash_table;
@@ -689,8 +686,12 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
           cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(125, 0, 125), 2);
 
         // Create text strings
-        std::string text1 = "Objects: " + std::to_string(i);
-        std::string text2 = "range: " + std::to_string(range) + "    total points: " + std::to_string(num_points);
+        std::string text1 = "Objects: " + std::to_string(i) + "  [" + std::to_string(num_points) + "]";
+        std::string text2 = "range: " + std::to_string(range) + 
+          "    intervals: " + std::to_string(Cluster.length()) +
+          // "    p_intervals: " + std::to_string(Cluster.width()) + 
+          "    azimuth: " + std::to_string( (Cluster.max_azimuth() - Cluster.min_azimuth())* 180.0 / M_PI ) +
+          "    a_intervals: " + std::to_string(Cluster.height());
         std::string cluster_text = "cluster: ";
 
         for (std::size_t j = 0; j < cluster_id.size(); ++j) {
@@ -716,7 +717,7 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
         cv::putText(top_view_img, text1, cv::Point(10, text_y), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 0), 2);
         cv::putText(top_view_img, text2, cv::Point(10, text2_y), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 0), 2);
         // Draw cluster_id text on the image
-        cv::putText(top_view_img, cluster_text, cv::Point(300, text_y), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 0), 2);
+        cv::putText(top_view_img, cluster_text, cv::Point(350, text_y), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 0), 2);
       }
 
       if(viz_switch) { 
@@ -731,6 +732,15 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
                 );
                 
                 cv::circle(top_view_img, circleCenter, 5, colors[colorIndex], -1);
+            }
+
+            else {
+                cv::Point circleCenter(
+                    0.5 * top_view_width + cluster_point->points[k].x * top_view_width / x_range,
+                    top_view_height - cluster_point->points[k].y * top_view_height / y_range
+                );
+                
+                cv::circle(top_view_img, circleCenter, 3, cv::Scalar(0, 0, 0), -1);
             }
         }
 
@@ -1720,7 +1730,7 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
     cv::waitKey(10);
 
     // cv::imwrite("/apollo/data/output_front_view/" + img_time + ".jpg", front_view_img);
-    // cv::imwrite("/apollo/data/output_top_view/" + img_time + ".jpg", top_view_img);
+    cv::imwrite("/apollo/data/output_top_view/" + img_time + ".jpg", top_view_img);
   }
 
   bp_cam_fusion_frame->timestamp = in_pcd_message->header().timestamp_sec();

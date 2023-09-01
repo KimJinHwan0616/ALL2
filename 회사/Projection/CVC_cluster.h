@@ -54,7 +54,7 @@ struct Voxel{
 class CVC {
 public:
     // 기본 생성자
-    CVC();
+    CVC() = default;
     
     // 매개변수를 받는 생성자
     CVC(std::vector<float>& param) {
@@ -93,17 +93,29 @@ public:
     // 주요 기능 실행 함수
     void process();
 
-private:
-    // 클러스터링에 사용되는 파라미터 값
-    float deltaA_ = 2;
-    float deltaR_ = 0.35;
-    float deltaP_ = 1.2;
+    float min_range() { return min_range_; }
+    float max_range() { return max_range_; }
 
+    float min_azimuth() { return min_azimuth_; }
+    float max_azimuth() { return max_azimuth_; }
+
+    int length() { return length_; }
+    int width() { return width_; }
+    int height() { return height_; }
+
+private:
     // 점군 데이터의 최소/최대 거리와 방위각
     float min_range_ = std::numeric_limits<float>::max();
     float max_range_ = std::numeric_limits<float>::min();
     float min_azimuth_ = -24.8 * M_PI / 180;
     float max_azimuth_ = 2 * M_PI / 180;
+    float min_polar_ = -24.8 * M_PI / 180;
+    float max_polar_ = 2 * M_PI / 180;
+
+    // 클러스터링에 사용되는 파라미터 값
+    float deltaA_ = 0;
+    float deltaR_ = 0;
+    float deltaP_ = 0;
 
     // 클래스 내에서 사용되는 길이, 너비, 높이 값
     int length_ = 0;

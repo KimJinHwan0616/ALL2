@@ -222,7 +222,7 @@ class SwmBpCamFusionComponent : public apollo::cyber::Component<drivers::PointCl
   uint16_t top_view_width = 2000;
   uint16_t top_view_height = 2000;
   uint8_t x_range = 50;
-  uint8_t y_range = 25;
+  uint8_t y_range = 30;
 
   // cv::Mat top_view_img ;
   // cv::Mat front_view_img ;
