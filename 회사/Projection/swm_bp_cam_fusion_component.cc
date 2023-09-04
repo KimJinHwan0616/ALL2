@@ -309,9 +309,13 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
     return true;
   } 
 
+  //##test
+  // AERROR << "";
+  //##
+
   cv::Mat top_view_img(top_view_height, top_view_width, CV_8UC3, cv::Scalar(255, 255, 255));
   cv::Mat front_view_img(1080, 1920, CV_8UC3, cv::Scalar(255, 255, 255));
-  
+
   if (viz_switch) {
     // top view
     cv::line(top_view_img, 
@@ -375,7 +379,7 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
       }
       mean_box_dis[(int)q]=0;
       q++;
-    }
+  }
 
   // box_pcd_data = std::make_shared<PointCloud>();
   Eigen::Matrix<double, 3, 1>  projection_matrix_31d;
@@ -412,9 +416,9 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
       if(((box.bbox2d().xmin() <= nomal_x) && ( nomal_x <= box.bbox2d().xmax())) 
           && ((box.bbox2d().ymin() <= nomal_y) && ( nomal_y <= box.bbox2d().ymax()))) {
 
-        if(viz_switch){
-          cv::circle(front_view_img, cv::Point(nomal_x, nomal_y), 1, colors[0], 1);
-        }
+        // if(viz_switch){
+        //   cv::circle(front_view_img, cv::Point(nomal_x, nomal_y), 3, colors[0], -1);
+        // }
 
         box_check_-> id.push_back(box_id);
         box_check_-> label.push_back(static_cast<base::ObjectType>(box.type()));
@@ -469,108 +473,13 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
       box_roi_pcd_msg_-> box_ylength = check_->box_ylength[0];
       box_roi_pcd_msgs_.push_back(std::move(box_roi_pcd_msg_));
     }
-    // else {
-    //   float near_dis = 10000;
-    //   int near_cou = 0;
-    //   int near_idx = 0;
-    //   for(auto& id_ : check_->id){
-    //     if(mean_box_dis[id_] < near_dis){
-    //       near_dis = mean_box_dis[id_];
-    //       near_idx = near_cou;
-    //     }
-    //     near_cou++;
-    //   }
-    //   std::shared_ptr<PointIL> box_roi_pcd_msg_ = std::make_shared<PointIL>();
-    //   box_roi_pcd_msg_-> x = check_-> x;
-    //   box_roi_pcd_msg_-> y = check_-> y;
-    //   box_roi_pcd_msg_-> z = check_-> z;
-    //   box_roi_pcd_msg_-> distance = check_-> distance;
-    //   box_roi_pcd_msg_-> id = check_-> id[near_idx];
-    //   box_roi_pcd_msg_-> label = static_cast<base::ObjectType>(check_->label[near_idx]);
-    //   box_roi_pcd_msg_-> sub_label = static_cast<base::ObjectSubType>(check_->sub_label[near_idx]);
-    //   box_roi_pcd_msg_-> box_xlength = check_->box_xlength[near_idx];
-    //   box_roi_pcd_msg_-> box_ylength = check_->box_ylength[near_idx];
-    //   box_roi_pcd_msgs_.push_back(std::move(box_roi_pcd_msg_));
-    // }
-
-
   }
 
-        
-
-
-        
-
-    //     int exclude_box_id = 0;
-    //     int save = 0;//별도의 박스(카메라 인지 결과 다른 박스들과 겹치지 않는 박스)
-    //     for(auto& exclude_box : in_box_message->perception_obstacle()) {
-    //       if(box.bbox2d().xmax() - box.bbox2d().xmin() >= 1550) {
-    //         continue;
-    //       }
-    //       if(box_id == exclude_box_id) {
-    //         continue;
-    //       }
-    //       if(((nomal_x >= exclude_box.bbox2d().xmin()) && (nomal_x <= exclude_box.bbox2d().xmax())) 
-    //           && ((nomal_y >= exclude_box.bbox2d().ymin()) && (nomal_y <= exclude_box.bbox2d().ymax()))) {
-    //         if(save == 0 || save == 1) {
-    //           save = 1;//겹치는 박스
-    //         } else if(save == 2) {
-    //           save = 2;//다른 박스에 포함 및 겹치는 박스
-    //         } else if(save == 3) {
-    //           save = 2;//다른 박스에 포함 및 겹치는 박스
-    //         }
-    //       }
-    //       if(((box.bbox2d().xmin() >= exclude_box.bbox2d().xmin()) && 
-    //           (box.bbox2d().xmax() <= exclude_box.bbox2d().xmax())) &&
-    //           ((box.bbox2d().ymin() >= exclude_box.bbox2d().ymin()) && 
-    //           ( box.bbox2d().ymax() <= exclude_box.bbox2d().ymax()))) {
-    //         if(save == 1) {
-    //           save = 2;//다른 박스에 포함 및 겹치는 박스
-    //         } else {
-    //           save = 3;//다른 박스에 포함
-    //         }
-    //       }
-    //       exclude_box_id++;
-    //     }
-        
-    //     if(save == 0 || save == 3) {
-    //       //박스가 겹치지 않거나 박스안에 포함될 때 저장
-    //       std::shared_ptr<PointIL> box_roi_pcd_msg_ = std::make_shared<PointIL>();
-    //       box_roi_pcd_msg_-> x = point.x();
-    //       box_roi_pcd_msg_-> y = point.y();
-    //       box_roi_pcd_msg_-> z = point.z();
-    //       box_roi_pcd_msg_-> distance = std::sqrt(point.x()*point.x() + point.y()*point.y());
-    //       box_roi_pcd_msg_-> id = box_id;
-    //       box_roi_pcd_msg_-> label = static_cast<base::ObjectType>(box.type());
-    //       box_roi_pcd_msg_-> sub_label = static_cast<base::ObjectSubType>(box.sub_type());
-    //       box_roi_pcd_msg_->box_xlength = box.bbox2d().xmax() - box.bbox2d().xmin();
-    //       box_roi_pcd_msg_->box_ylength = box.bbox2d().ymax() - box.bbox2d().ymin();
-    //       box_roi_pcd_msgs_.push_back(std::move(box_roi_pcd_msg_));
-    //     } else {
-    //       //다른 박스에 포함 및 겹치는 박스일 경우 저장
-    //       std::shared_ptr<PointIL> box_roi_pcd_msg_ = std::make_shared<PointIL>();
-    //       box_roi_pcd_msg_-> x = point.x();
-    //       box_roi_pcd_msg_-> y = point.y();
-    //       box_roi_pcd_msg_-> z = point.z();
-    //       box_roi_pcd_msg_-> distance = std::sqrt(point.x()*point.x() + point.y()*point.y());
-    //       box_roi_pcd_msg_-> id = box_id;
-    //       box_roi_pcd_msg_-> label = static_cast<base::ObjectType>(box.type());
-    //       box_roi_pcd_msg_-> sub_label = static_cast<base::ObjectSubType>(box.sub_type());
-    //       box_roi_pcd_msg_->box_xlength = box.bbox2d().xmax() - box.bbox2d().xmin();
-    //       box_roi_pcd_msg_->box_ylength = box.bbox2d().ymax() - box.bbox2d().ymin();
-    //       box_roi_pcd_msgs_dummy.push_back(std::move(box_roi_pcd_msg_));
-    //     }
-    //     // break;
-    //   }
-    //   box_id++;
-    // }
-  // }
-
   //최근접점을 찾는 부분
-  for (int i =0 ; i < in_box_message->perception_obstacle_size();i++){
+  for (int i =0 ; i < in_box_message->perception_obstacle_size();i++){  
+    const auto& box = in_box_message->perception_obstacle(i);
     if (viz_switch) {
       // rectangle
-      const auto& box = in_box_message->perception_obstacle(i);
       if(box.bbox2d().xmax() - box.bbox2d().xmin() < 1550) {
         cv::rectangle(front_view_img, cv::Point(box.bbox2d().xmin(), box.bbox2d().ymin()),
                     cv::Point(box.bbox2d().xmax(), box.bbox2d().ymax()), cv::Scalar(0, 0, 0), 2);
@@ -622,10 +531,19 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
     if(cluster_point->size() > 1) {
       //###
       vector<float> param(3,0);
-      param[0] = 4;  // 고도각 2
-      param[1] = 0.95 // 거리
-      // param[2] = 361;  // 방위각 1.5
-      param[2] = 361;  // 방위각 1.5
+      param[0] = 361;  // 고도각 
+
+      if (static_cast<base::ObjectSubType>(box.sub_type()) == base::ObjectSubType::BUS) {  // BUS
+        param[1] = 2.5; // 거리
+      }
+      else if (static_cast<base::ObjectSubType>(box.sub_type()) == base::ObjectSubType::CAR) {
+        param[1] = 1.5;
+      }
+      else {
+        param[1] = 1;
+      }
+
+      param[2] = 361;  // 방위각 
 
       CVC Cluster(param);
 
@@ -634,7 +552,19 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
       std::vector<PointAPR> capr;
       Cluster.calculateAPR(*cluster_point, capr);
 
-      //##
+      //##test
+      // cout << "Object: " << i << endl;
+      // cout << "Max Polar: " << Cluster.max_polar()* 180.0 / M_PI 
+      //      << " Min Polar: " << Cluster.min_polar() * 180.0 / M_PI << endl;
+
+      // cout << "Max Range: " << Cluster.max_range()
+      //      << " Min Range: " << Cluster.min_range()<< endl;
+
+      // cout << "Max Azimute: " << Cluster.max_azimuth()* 180.0 / M_PI 
+      //      << " Min Azimute: " << Cluster.min_azimuth() * 180.0 / M_PI << endl;
+
+      // cout << endl;
+
       double range = Cluster.max_range() - Cluster.min_range();
       int num_points = capr.size();
       // int num_points = box_roi_pcd_msgs_.size();
@@ -678,7 +608,7 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
         cv::rectangle(top_view_img, 
           cv::Point( 0.5*top_view_width + (cluster_xmin)*top_view_width/x_range, top_view_height - (cluster_ymin)*top_view_height/y_range),
           cv::Point( 0.5*top_view_width + (cluster_xmax)*top_view_width/x_range, top_view_height - (cluster_ymax)*top_view_height/y_range),
-          cv::Scalar(0, 255, 0), 1);
+          cv::Scalar(0, 128, 0), 2);
 
         std::string text = std::to_string(i);
         cv::putText(top_view_img, text, 
@@ -686,27 +616,29 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
           cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(125, 0, 125), 2);
 
         // Create text strings
-        std::string text1 = "Objects: " + std::to_string(i) + "  [" + std::to_string(num_points) + "]";
-        std::string text2 = "range: " + std::to_string(range) + 
-          "    intervals: " + std::to_string(Cluster.length()) +
-          // "    p_intervals: " + std::to_string(Cluster.width()) + 
-          "    azimuth: " + std::to_string( (Cluster.max_azimuth() - Cluster.min_azimuth())* 180.0 / M_PI ) +
-          "    a_intervals: " + std::to_string(Cluster.height());
+        std::string text1 = "Objects: " + std::to_string(i) + "  [" + std::to_string(num_points) + "]   [" +
+         ObjectSubTypeToString(static_cast<base::ObjectSubType>(box.sub_type())) + "]";
         std::string cluster_text = "cluster: ";
+
+        std::string text2 = "range: " + std::to_string(range) + 
+          "    r_intervals: " + std::to_string(Cluster.length()) +
+          "    azimuth: " + std::to_string( (Cluster.max_azimuth() - Cluster.min_azimuth())* 180.0 / M_PI ) +
+          // "    a_intervals: " + std::to_string(Cluster.height()) +
+          "    polar: " + std::to_string( (Cluster.max_polar() - Cluster.min_polar())* 180.0 / M_PI );
 
         for (std::size_t j = 0; j < cluster_id.size(); ++j) {
             cluster_text += std::to_string(cluster_id[j]) + " ";
 
-            // 해당 클러스터에 속하는 포인트들의 개수를 가져옴
-            int points_in_cluster = 0;
-            for (size_t k = 0; k < cluster_indices.size(); ++k) {
-                if (cluster_indices[k] == cluster_id[j]) {
-                    ++points_in_cluster;
-                }
-            }
+            // // 해당 클러스터에 속하는 포인트들의 개수를 가져옴
+            // int points_in_cluster = 0;
+            // for (size_t k = 0; k < cluster_indices.size(); ++k) {
+            //     if (cluster_indices[k] == cluster_id[j]) {
+            //         ++points_in_cluster;
+            //     }
+            // }
 
-            // 포인트 개수도 텍스트로 추가
-            cluster_text += "(" + std::to_string(points_in_cluster) + ") ";
+            // // 포인트 개수도 텍스트로 추가
+            // cluster_text += "(" + std::to_string(points_in_cluster) + ") ";
         }
 
         // Calculate text positions based on 'i'
@@ -717,31 +649,40 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
         cv::putText(top_view_img, text1, cv::Point(10, text_y), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 0), 2);
         cv::putText(top_view_img, text2, cv::Point(10, text2_y), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 0), 2);
         // Draw cluster_id text on the image
-        cv::putText(top_view_img, cluster_text, cv::Point(350, text_y), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 0), 2);
+        cv::putText(top_view_img, cluster_text, cv::Point(550, text_y), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 0), 2);
       }
 
       if(viz_switch) { 
         for (size_t k = 0; k < cluster_indices.size(); ++k) {
-            int clusterIndex = cluster_indices[k];
-            int colorIndex = clusterIndex - 1;  // Adjust index to match the colors array
-            
-            if (colorIndex >= 0 && colorIndex < static_cast<int>(colors.size())) {
-                cv::Point circleCenter(
-                    0.5 * top_view_width + cluster_point->points[k].x * top_view_width / x_range,
-                    top_view_height - cluster_point->points[k].y * top_view_height / y_range
-                );
-                
-                cv::circle(top_view_img, circleCenter, 5, colors[colorIndex], -1);
-            }
+          Eigen::Matrix<double, 4, 1>  bp_projection_41d = Eigen::Matrix<double, 4, 1> ::Identity();
+          bp_projection_41d << cluster_point->points[k].x, cluster_point->points[k].y, cluster_point->points[k].z, 1;
+          projection_matrix_31d = resultMatrix_map_[camera_names_[0]] * bp_projection_41d ;
 
-            else {
-                cv::Point circleCenter(
-                    0.5 * top_view_width + cluster_point->points[k].x * top_view_width / x_range,
-                    top_view_height - cluster_point->points[k].y * top_view_height / y_range
-                );
-                
-                cv::circle(top_view_img, circleCenter, 3, cv::Scalar(0, 0, 0), -1);
-            }
+          auto nomal_x = projection_matrix_31d(0)/std::abs(projection_matrix_31d(2));
+          auto nomal_y = projection_matrix_31d(1)/std::abs(projection_matrix_31d(2));
+
+          int clusterIndex = cluster_indices[k];
+          int colorIndex = clusterIndex - 1;  // Adjust index to match the colors array
+          
+          if (colorIndex >= 0 && colorIndex < static_cast<int>(colors.size())) {
+              cv::Point circleCenter(
+                  0.5 * top_view_width + cluster_point->points[k].x * top_view_width / x_range,
+                  top_view_height - cluster_point->points[k].y * top_view_height / y_range
+              );
+              
+              cv::circle(top_view_img, circleCenter, 5, colors[colorIndex], -1);
+              cv::circle(front_view_img, cv::Point(nomal_x, nomal_y), 3, colors[colorIndex], -1);
+          }
+
+          else {
+              cv::Point circleCenter(
+                  0.5 * top_view_width + cluster_point->points[k].x * top_view_width / x_range,
+                  top_view_height - cluster_point->points[k].y * top_view_height / y_range
+              );
+              
+              cv::circle(top_view_img, circleCenter, 3, cv::Scalar(0, 0, 0), -1);
+              cv::circle(front_view_img, cv::Point(nomal_x, nomal_y), 3, cv::Scalar(0, 0, 0), -1);
+          }
         }
 
       }
@@ -1714,23 +1655,37 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
   }
 
   if(viz_switch){
+    cv::line(front_view_img, 
+      cv::Point(0, 1080),
+      cv::Point(1920, 1080), 
+      cv::Scalar(0, 0, 0), 5);
+    cv::Mat total_img;
+    // cv::hconcat(top_view_img, front_view_img, total_img);
+    cv::vconcat(front_view_img, top_view_img, total_img);
+
     std::string img_time = std::to_string(Time::Now().ToNanosecond());
     
     // std::string front_view_name = sub_lidar_fusion_name + "Front View";
-    std::string top_view_name = sub_lidar_fusion_name + "Top View";
+    // std::string top_view_name = sub_lidar_fusion_name + "Top View";
 
     // cv::namedWindow(front_view_name, cv::WINDOW_NORMAL);
     // cv::resizeWindow(front_view_name, 1000, 600);
     // cv::imshow(front_view_name, front_view_img);
     // cv::waitKey(10);
 
-    cv::namedWindow(top_view_name, cv::WINDOW_NORMAL);
-    cv::resizeWindow(top_view_name, 850, 1000);
-    cv::imshow(top_view_name, top_view_img);
+    // cv::namedWindow(top_view_name, cv::WINDOW_NORMAL);
+    // cv::resizeWindow(top_view_name, 850, 1000);
+    // cv::imshow(top_view_name, top_view_img);
+    // cv::waitKey(10);
+
+    cv::namedWindow("Total", cv::WINDOW_NORMAL);
+    cv::resizeWindow("Total", 710, 1080);
+    cv::imshow("Total", total_img);
     cv::waitKey(10);
 
     // cv::imwrite("/apollo/data/output_front_view/" + img_time + ".jpg", front_view_img);
-    cv::imwrite("/apollo/data/output_top_view/" + img_time + ".jpg", top_view_img);
+    // cv::imwrite("/apollo/data/output_top_view/" + img_time + ".jpg", top_view_img);
+    // cv::imwrite("/apollo/data/output_total_view/" + img_time + ".jpg", total_img);
   }
 
   bp_cam_fusion_frame->timestamp = in_pcd_message->header().timestamp_sec();

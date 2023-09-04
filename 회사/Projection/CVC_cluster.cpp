@@ -48,6 +48,7 @@ void CVC::calculateAPR(const pcl::PointCloud<pcl::PointXYZI>& cloud_IN, std::vec
     if(par.polar_angle < min_polar_){
       min_polar_ = par.polar_angle;
     }
+
     if(par.polar_angle > max_polar_){
       max_polar_ = par.polar_angle;
     }
@@ -59,8 +60,8 @@ void CVC::calculateAPR(const pcl::PointCloud<pcl::PointXYZI>& cloud_IN, std::vec
   // length_, width_, height_ 값 계산
   length_ = int((max_range_ - min_range_) / deltaR_) + 1;
   // length_ = 5;
-  // width_  = round(360 / deltaP_);
-  width_  = int((max_polar_ - min_polar_) / deltaP_) + 1;
+  width_  = round(360 / deltaP_);
+  // width_  = int((max_polar_ - min_polar_) / deltaP_) + 1;
   // width_  = 1;
   height_ = int(((max_azimuth_ - min_azimuth_) * 180 / M_PI) / deltaA_) + 1;
   // height_ = 1;

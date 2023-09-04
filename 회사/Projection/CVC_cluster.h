@@ -99,6 +99,9 @@ public:
     float min_azimuth() { return min_azimuth_; }
     float max_azimuth() { return max_azimuth_; }
 
+    float max_polar() { return max_polar_; }
+    float min_polar() { return min_polar_; }
+
     int length() { return length_; }
     int width() { return width_; }
     int height() { return height_; }
@@ -107,10 +110,10 @@ private:
     // 점군 데이터의 최소/최대 거리와 방위각
     float min_range_ = std::numeric_limits<float>::max();
     float max_range_ = std::numeric_limits<float>::min();
-    float min_azimuth_ = -24.8 * M_PI / 180;
-    float max_azimuth_ = 2 * M_PI / 180;
-    float min_polar_ = -24.8 * M_PI / 180;
-    float max_polar_ = 2 * M_PI / 180;
+    float min_azimuth_ = 360 * M_PI / 180;
+    float max_azimuth_ = 0 * M_PI / 180;
+    float min_polar_ = 360 * M_PI / 180;
+    float max_polar_ = 0 * M_PI / 180;
 
     // 클러스터링에 사용되는 파라미터 값
     float deltaA_ = 0;
