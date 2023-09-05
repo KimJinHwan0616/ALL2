@@ -339,6 +339,19 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
     cv::rectangle(top_view_img, ego_start_point,
                 ego_end_point, cv::Scalar(125, 0, 125), -1);
 
+    //##
+    // float offset_range = 5;
+    // cv::Scalar line_color(125, 0, 125);
+    // int num_lines = 8; // Number of lines to draw
+
+    // for (int i = 1; i < num_lines; ++i) {
+    //     float offset = offset_range + i * 5;
+    //     cv::Point start_point(0, top_view_height - offset * top_view_height / y_range);
+    //     cv::Point end_point(top_view_width, top_view_height - offset * top_view_height / y_range);
+    //     cv::line(top_view_img, start_point, end_point, line_color, 1);
+    // }
+    //##
+
     // double fov_x = x_range;
     // double fov_y = std::tan(angle_r_rad) * fov_x;
 
@@ -533,12 +546,21 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
       vector<float> param(3,0);
       param[0] = 361;  // 고도각 
 
+      // if (cluster_ymax - cluster_ymin < 5) {
+      //   param[1] = 0.7;
+      // }
+
       if (static_cast<base::ObjectSubType>(box.sub_type()) == base::ObjectSubType::BUS) {  // BUS
-        param[1] = 2.5; // 거리
+        param[1] = 3; // 거리
       }
-      else if (static_cast<base::ObjectSubType>(box.sub_type()) == base::ObjectSubType::CAR) {
-        param[1] = 1.5;
+      else if (static_cast<base::ObjectSubType>(box.sub_type()) == base::ObjectSubType::CAR
+        || static_cast<base::ObjectSubType>(box.sub_type()) == base::ObjectSubType::TRUCK
+        || static_cast<base::ObjectSubType>(box.sub_type()) == base::ObjectSubType::VAN) {
+        param[1] = 1.8;
       }
+      // else if (static_cast<base::ObjectSubType>(box.sub_type()) == base::ObjectSubType::TRUCK) {
+      //   param[1] = 1.8;
+      // }
       else {
         param[1] = 1;
       }
@@ -616,29 +638,30 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
           cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(125, 0, 125), 2);
 
         // Create text strings
-        std::string text1 = "Objects: " + std::to_string(i) + "  [" + std::to_string(num_points) + "]   [" +
+        std::string text1 = "Objects: " + std::to_string(i) + "  [" + std::to_string(num_points) + "]  [" +
          ObjectSubTypeToString(static_cast<base::ObjectSubType>(box.sub_type())) + "]";
         std::string cluster_text = "cluster: ";
 
         std::string text2 = "range: " + std::to_string(range) + 
-          "    r_intervals: " + std::to_string(Cluster.length()) +
-          "    azimuth: " + std::to_string( (Cluster.max_azimuth() - Cluster.min_azimuth())* 180.0 / M_PI ) +
+          "    r_intervals: " + std::to_string(Cluster.length());
+          // "    box_height: " + std::to_string(cluster_ymax - cluster_ymin);
+          // "    azimuth: " + std::to_string( (Cluster.max_azimuth() - Cluster.min_azimuth())* 180.0 / M_PI ) +
           // "    a_intervals: " + std::to_string(Cluster.height()) +
-          "    polar: " + std::to_string( (Cluster.max_polar() - Cluster.min_polar())* 180.0 / M_PI );
+          // "    polar: " + std::to_string( (Cluster.max_polar() - Cluster.min_polar())* 180.0 / M_PI );
 
         for (std::size_t j = 0; j < cluster_id.size(); ++j) {
             cluster_text += std::to_string(cluster_id[j]) + " ";
 
-            // // 해당 클러스터에 속하는 포인트들의 개수를 가져옴
-            // int points_in_cluster = 0;
-            // for (size_t k = 0; k < cluster_indices.size(); ++k) {
-            //     if (cluster_indices[k] == cluster_id[j]) {
-            //         ++points_in_cluster;
-            //     }
-            // }
+            // 해당 클러스터에 속하는 포인트들의 개수를 가져옴
+            int points_in_cluster = 0;
+            for (size_t k = 0; k < cluster_indices.size(); ++k) {
+                if (cluster_indices[k] == cluster_id[j]) {
+                    ++points_in_cluster;
+                }
+            }
 
-            // // 포인트 개수도 텍스트로 추가
-            // cluster_text += "(" + std::to_string(points_in_cluster) + ") ";
+            // 포인트 개수도 텍스트로 추가
+            cluster_text += "(" + std::to_string(points_in_cluster) + ") ";
         }
 
         // Calculate text positions based on 'i'
@@ -706,7 +729,7 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
       }
 #else
       std::map<int, float> cluster_id_z;
-
+      /*
       float labelz = 0; 
       if(sub_label == base::ObjectSubType::CAR) {
         labelz = car_gradient;
@@ -727,7 +750,7 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
       } else if(sub_label == base::ObjectSubType::TRAFFICCONE) {
         labelz = trafficon_gradient;
       } else {labelz = 1.6;}
-    
+      */
       float maxz = 0;
       int max_cluster_id = 0;
       for(int j = 0; j < (int)cluster_id.size(); ++j){
@@ -739,6 +762,39 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
         }
         cluster_id_z[max_cluster_id] = maxz;
       }
+
+      //###
+      // std::map<int, float> cluster_id_z;
+      // float min_z_difference = std::numeric_limits<float>::max(); // 초기값 설정
+      // int selected_cluster_id = -1; // 선택된 클러스터 ID 초기값
+
+      // for (int j = 0; j < (int)cluster_id.size(); ++j) {
+      //     float z_sum = 0;
+      //     int num_points = 0;
+      //     for (int k = 0; k < (int)cluster_indices.size(); ++k) {
+      //         if (cluster_id[k] == cluster_id[j]) {
+      //             z_sum += cluster_point->points[k].z;
+      //             ++num_points;
+      //         }
+      //     }
+      //     if (num_points > 0) {
+      //         float average_z = z_sum / num_points;
+      //         float z_difference = std::abs(average_z - 1.29); // 클러스터 평균 z와 1.87과의 차이 계산
+      //         if (z_difference < min_z_difference) {
+      //             min_z_difference = z_difference;
+      //             selected_cluster_id = cluster_id[j];
+      //         }
+      //     }
+      // }
+
+      // if (selected_cluster_id != -1) {
+      //     cluster_id_z[selected_cluster_id] = min_z_difference; // 선택된 클러스터의 ID와 차이값을 저장
+      // }
+
+      // int max_cluster_id = selected_cluster_id;
+      //##
+
+      /*
       float similar_z = 10000;
       for(auto& pair : cluster_id_z){
         if (std::abs(pair.second - labelz) <= similar_z){
@@ -746,6 +802,7 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
           max_cluster_id = pair.first;
         }
       }
+      */
 #endif
       for(int k =0; k<(int)cluster_indices.size(); ++k){
         if(cluster_indices[k] == max_cluster_id){
@@ -761,52 +818,14 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
           box_roi_pcd_msg_-> box_xlength = box_xlength;
           box_roi_pcd_msg_-> box_ylength = box_ylength;
           box_roi_pcd_msgs_cvc.push_back(std::move(box_roi_pcd_msg_));
-          //## 클러스터링 선택O - Red
-          // if(viz_switch){
-          //   cv::circle(top_view_img, 
-          //       cv::Point(0.5*top_view_width + cluster_point->points[k].x*top_view_width/x_range, 
-          //           top_view_height - cluster_point->points[k].y*top_view_height/y_range), 
-          //       4, colors[0], -1);
-          // }
+          //## 클러스터링 선택O
+          if(viz_switch){
+            cv::circle(top_view_img, 
+                cv::Point(0.5*top_view_width + cluster_point->points[k].x*top_view_width/x_range, 
+                    top_view_height - cluster_point->points[k].y*top_view_height/y_range), 
+                5, cv::Scalar(0, 125, 0), -1);
+          }
         } 
-        
-        // else if (cluster_indices[k] == 1 && cluster_indices[k] != max_cluster_id) {
-        //   if(viz_switch){
-        //     cv::circle(top_view_img, 
-        //         cv::Point(0.5*top_view_width + cluster_point->points[k].x*top_view_width/x_range, 
-        //             top_view_height - cluster_point->points[k].y*top_view_height/y_range), 
-        //         4, colors[3], -1);
-        //   }
-        // } else if (cluster_indices[k] == 2 && cluster_indices[k] != max_cluster_id) {
-        //   if(viz_switch){
-        //     cv::circle(top_view_img, 
-        //         cv::Point(0.5*top_view_width + cluster_point->points[k].x*top_view_width/x_range, 
-        //             top_view_height - cluster_point->points[k].y*top_view_height/y_range), 
-        //         4, colors[4], -1);
-        //   }
-        // } else if (cluster_indices[k] == 3 && cluster_indices[k] != max_cluster_id) {
-        //   if(viz_switch){
-        //     cv::circle(top_view_img, 
-        //         cv::Point(0.5*top_view_width + cluster_point->points[k].x*top_view_width/x_range, 
-        //             top_view_height - cluster_point->points[k].y*top_view_height/y_range), 
-        //         4, colors[6], -1);
-        //   }
-        // } else if (cluster_indices[k] == 4 && cluster_indices[k] != max_cluster_id) {
-        //   if(viz_switch){
-        //     cv::circle(top_view_img, 
-        //         cv::Point(0.5*top_view_width + cluster_point->points[k].x*top_view_width/x_range, 
-        //             top_view_height - cluster_point->points[k].y*top_view_height/y_range), 
-        //         4, colors[6], -1);
-        //   }
-        // } else {
-        //   //## 클러스터링 선택X - Blue
-        //   if(viz_switch){
-        //     cv::circle(top_view_img, 
-        //         cv::Point(0.5*top_view_width + cluster_point->points[k].x*top_view_width/x_range, 
-        //             top_view_height - cluster_point->points[k].y*top_view_height/y_range), 
-        //         4, colors[2], -1);
-        //   }
-        // }
       }
     }
 
@@ -1430,11 +1449,11 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
     }
 
     if(viz_switch) {
-      float trans_x = 0.5*top_view_width + (box_near_pcd_msg_-> x)*top_view_width/x_range;
-      float trans_y = top_view_height - (box_near_pcd_msg_-> y)*top_view_height/y_range;
+      // float trans_x = 0.5*top_view_width + (box_near_pcd_msg_-> x)*top_view_width/x_range;
+      // float trans_y = top_view_height - (box_near_pcd_msg_-> y)*top_view_height/y_range;
 
-      // center point
-      cv::circle(top_view_img, cv::Point(trans_x, trans_y), 2, colors[1], 1);
+      // 박스 중심점
+      // cv::circle(top_view_img, cv::Point(trans_x, trans_y), 5, cv::Scalar(0,0,0), -1);
 
 #ifdef GRADIENT      
       if (box_near_pcd_msg_-> label == base::ObjectType::VEHICLE) {
@@ -1645,7 +1664,7 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
       // cv::rectangle(top_view_img, 
       //   cv::Point( 0.5*top_view_width + (view_x0)*top_view_width/x_range, top_view_height - (view_y0)*top_view_height/y_range),
       //   cv::Point( 0.5*top_view_width + (view_x2)*top_view_width/x_range, top_view_height - (view_y2)*top_view_height/y_range),
-      //   cv::Scalar(0, 0, 0), 1);
+      //   cv::Scalar(0, 0, 0), 2);
 
       // std::string text = std::to_string(near_point_->id);
       // cv::putText(top_view_img, text, 
@@ -1658,7 +1677,7 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
     cv::line(front_view_img, 
       cv::Point(0, 1080),
       cv::Point(1920, 1080), 
-      cv::Scalar(0, 0, 0), 5);
+      cv::Scalar(0, 0, 0), 10);
     cv::Mat total_img;
     // cv::hconcat(top_view_img, front_view_img, total_img);
     cv::vconcat(front_view_img, top_view_img, total_img);
@@ -1682,10 +1701,10 @@ bool SwmBpCamFusionComponent::InternalProc(const std::shared_ptr<const drivers::
     cv::resizeWindow("Total", 710, 1080);
     cv::imshow("Total", total_img);
     cv::waitKey(10);
-
+    //###
     // cv::imwrite("/apollo/data/output_front_view/" + img_time + ".jpg", front_view_img);
     // cv::imwrite("/apollo/data/output_top_view/" + img_time + ".jpg", top_view_img);
-    // cv::imwrite("/apollo/data/output_total_view/" + img_time + ".jpg", total_img);
+    cv::imwrite("/apollo/data/output_total_view/" + img_time + ".jpg", total_img);
   }
 
   bp_cam_fusion_frame->timestamp = in_pcd_message->header().timestamp_sec();
