@@ -1,0 +1,10 @@
+{
+  "metadata": {
+    "annotator": "주석자",
+    "comment": "설명",
+    "file_version": "주석 버전",
+    "name": "주석 이름",
+    "schema_version": "schema 버전",
+    "tagged_file": "URL"
+  }
+}

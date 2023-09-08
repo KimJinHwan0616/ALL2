@@ -1,0 +1,13 @@
+{
+  "objects": {
+    "인덱스": {
+      "name": "이름",
+      "type": "유형",    // Car, Bus, ZebraCross, ...
+      "object_data": { ... }
+    },
+    "인덱스": { ... }
+  }
+}
+
+
+

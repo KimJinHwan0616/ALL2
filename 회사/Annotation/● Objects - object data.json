@@ -1,0 +1,29 @@
+{
+  "object_data": {
+    // image ?? //
+    // 2d
+    "bbox": {
+      "name": "이름",
+      "val": [cx, cy, 가로, 높이],
+      "coordinate_system": "좌표계",    // 라이다, 카메라, IMU, ...
+    },
+    // 3d
+    "cuboid": {
+      "name": "이름",
+      "val": [cx, cy, cz, qx, qy, qz, qw, 가로, 세로, 높이],   // 쿼터니언(10)
+      // "val": [중심 x좌표, 중심 y좌표, rx, ry, rz, 가로, 세로, 높이],   // 오일러(9)
+      "coordinate_system": "좌표계",    // 라이다, 카메라, IMU, ...
+    },
+    //////////////////////////////////////////
+    // lidar //
+    "binary": {
+      "name": "이름",
+      "val": "#nVx",    // Point(RLE)
+      "encoding": "rle"
+    }
+
+  }
+}
+
+
+

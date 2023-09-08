@@ -1,0 +1,24 @@
+{
+  "openlabel" : {
+    "metadata" : { ... },
+    // Labeling //
+    // 객체
+    "objects": { ... },
+    // 동작
+    "actions": { ... },
+    // 사건
+    "events": { ... },
+    // 맥락(날씨, 위치, ...)
+    "contexts": { ... },
+
+    "relations": { ... },
+    "frames": { ... },
+    "frame_intervals": { ... },
+    "metadata": { ... },
+    "ontologies": { ... },
+    "resources": { ... },
+    "coordinate_systems": { ... },
+    "streams": { ... }
+  }
+}
+

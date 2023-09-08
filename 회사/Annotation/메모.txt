@@ -1,0 +1,28 @@
+Annotation(주석): 원시 데이터(+메타 데이터)
+  - 인공지능이 데이터의 내용을 이해할 수 있도록 주석을 달아주는 작업
+ㅁ 라벨링(labeling): 다중 센서 데이터
+ㅁ 태깅(tagging): 시나리오
+
+
+Bounding Box(2d), Cuboid(3d)
+Polygon, Poly Line, Point,
+Semantic Segmentation
+###############################################
+Annotation schema: 구조 정의
+ex) 이력서
+
+    format: 유형(JSON)
+    ex) 온라인 이력서, 기술 이력서, ...
+
+<그림>
+
+Annotation instance: 정보
+    ex) 이름, 전화번호, 학력, ...
+
+Ontology: 합의된 지식을 그래프 형식으로 정의
+ex)
+사람 -> 먹는다 -> 배1
+사람 -> 탄다 -> 배2
+사람 -> 구성된다 -> 배3
+
+    OWL(Web Ontology Language): 웹 온톨로지 언어
